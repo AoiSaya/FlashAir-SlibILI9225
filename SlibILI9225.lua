@@ -2,7 +2,7 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/02 rev.0.16 Left & Top for (0,0)
+-- 2018/09/03 rev.0.17 print debug
 -----------------------------------------------
 --[[
 Pin assign
@@ -31,11 +31,12 @@ rOfs  = 0;
 ctrl  = 0x1F;
 x	  = 0;
 y	  = 0;
-font  = {};
 ch	  = 0xFF; -- color ch*256+cl, BBBBB_GGGGGG_RRRRR(64K color)
 cl	  = 0xFF;
 gh	  = 0x00; -- bg color gh*256+gl
 gl	  = 0x00;
+font  = {};
+mag   = 1;
 enable= false;
 }
 
@@ -542,11 +543,15 @@ function ILI9225:put2(bitmap,x,y)
 	collectgarbage()
 end
 
-function ILI9225:locate(x,y,color,bgcolor,font )
+function ILI9225:locate(x,y,color,bgcolor,font,mag )
 	local bx	= bit32.extract
 
-	self.x = x
-	self.y = y
+	if x then
+		self.x = x
+	end
+	if y then
+		self.y = y
+	end
 	if color then
 		self.ch = bx(color,8,8)
 		self.cl = bx(color,0,8)
@@ -558,10 +563,15 @@ function ILI9225:locate(x,y,color,bgcolor,font )
 	if font then
 		self.font = font
 	end
+	if mag then
+		self.mag = mag
+	end
 end
 
 function ILI9225:print(str)
-	local i,j,n,c,b,bk,bj
+	local i,j,k,l
+	local n,c,b,bk,bj,il
+	local h1,v1,h2,v2
 	local s
 	local p = {}
 	local fw = self.font.width
@@ -570,36 +580,64 @@ function ILI9225:print(str)
 	local gl = self.gl
 	local ch = self.ch-gh
 	local cl = self.cl-gl
+	local mg = self.mag
 	local bx = bit32.extract
-	local h1,v1,h2,v2 = self.x,self.y,self.xMax,self.y+self.font.height-1
+	local mf = math.floor
 
 	self:setRamMode(0,0,1)
-	self:setWindow(h1,v1,h2,v2)
-	self:writeRamCmd(h1,v1)
 
-	bk = 1
-	for i=1,#str do
-		c = str.sub(str,i,i)
-		b = self.font[c]
-		for j=1,#b do
-			bj=b[j]
-			for k=fh-1,0,-1 do n=bx(bj,k,1);p[bk],p[bk+1]=n*ch+gh,n*cl+gl;bk=bk+2 end
-			if bk>1920 then
-				self:writeRamData(string.char(table.unpack(p)))
-				bk=1
-				p={}
+	is = 1
+	slen = #str
+	while slen>0 do
+		sn = mf((self.xMax+1-self.x)/mg/fw)
+		il = sn<slen and sn or slen
+		slen = slen - il
+		h1,v1,h2,v2 = self:bTrans(self.x,self.y,self.xMax,self.y+mg*fh-1)
+		self:setWindow(h1,v1,h2,v2)
+		if self.id==0 then self:writeRamCmd(h1,v2) else	self:writeRamCmd(h2,v1) end
+
+		bk=1
+		for i=is,is+il-1 do
+			c = str.sub(str,i,i)
+			b = self.font[c]
+			for j=1,fw do
+				bj = b[j]
+				for l=1,mg do
+					for k=fh-1,0,-1 do n=bx(bj,k,1) for l=1,mg do p[bk],p[bk+1]=n*ch+gh,n*cl+gl;bk=bk+2 end end
+					if bk>1000 then
+					   	self:writeRamData(string.char(table.unpack(p)))
+						bk=1
+						p={}
+						collectgarbage()
+					end
+				end
 			end
 		end
+		if bk>1 and il>0 then
+			self:writeRamData(string.char(table.unpack(p)))
+			p={}
+		end
+		if slen>0 then
+			self.x,self.y = 0,self.y+mg*fh
+			is = is+il
+		else
+			self.x = self.x+mg*fw*il
+		end
+		collectgarbage()
 	end
-	if bk>1 then
-		self:writeRamData(string.char(table.unpack(p)))
-	end
-	self.x = self.x+#b*#str
 	self:resetWindow()
 	self:setRamMode(0,0,0)
 	p = nil
 	collectgarbage()
+
+	return self.x,self.y
 end
 
+function ILI9225:println(str)
+	self:print(str)
+	self.x,self.y = 0,self.y+self.font.height
+
+	return self.x,self.y
+end
 collectgarbage()
 return ILI9225
