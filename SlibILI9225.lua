@@ -43,17 +43,6 @@ enable= false;
 
 --[Low layer functions]--
 
-function ILI9225:pTrans(x,y)
-	if self.swp then x,y = y,x end
-	return self.hDrc*x+self.hOfs,self.vDrc*y+self.vOfs
-end
-
-function ILI9225:bTrans(x1,y1,x2,y2)
-	local hD,vD,hO,vO = self.hDrc,self.vDrc,self.hOfs,self.vOfs
-	if self.swp then x1,y1,x2,y2 = y1,x1,y2,x2 end
-	return hD*x1+hO,vD*y1+vO,hD*x2+hO,vD*y2+vO
-end
-
 function ILI9225:writeString(cmd,str,...)
 	local spi = fa.spi
 	spi("cs",0)
@@ -146,6 +135,17 @@ function ILI9225:resetWindow()
 	self:writeWord(0x37,0)
 	self:writeWord(0x38,self.rOfs+self.vSize-1)
 	self:writeWord(0x39,self.rOfs)
+end
+
+function ILI9225:pTrans(x,y)
+	if self.swp then x,y = y,x end
+	return self.hDrc*x+self.hOfs,self.vDrc*y+self.vOfs
+end
+
+function ILI9225:bTrans(x1,y1,x2,y2)
+	local hD,vD,hO,vO = self.hDrc,self.vDrc,self.hOfs,self.vOfs
+	if self.swp then x1,y1,x2,y2 = y1,x1,y2,x2 end
+	return hD*x1+hO,vD*y1+vO,hD*x2+hO,vD*y2+vO
 end
 
 function ILI9225:clip(x1,y1,x2,y2)
@@ -378,8 +378,13 @@ function ILI9225:boxFill(x1,y1,x2,y2,color)
 	local mf = math.floor
 	local len,dat,col,vd,hd
 
-	if x1<0 and x2<0 or x1>xMax and x2>xMax then return end
-	if y1<0 and y2<0 or y1>yMax and y2>yMax then return end
+	if x1>x2 then x1,x2 = x2,x1 end
+	if y1>y2 then y1,y2 = y2,y1 end
+	if x2<0 or y2<0 or x1>xMax or y1>yMax then return end
+	if x1<0 then x1=0 end
+	if y1<0 then y1=0 end
+	if x2>xMax then x2=xMax end
+	if y2>yMax then y2=yMax end
 
 	col = string.char(bx(color,8,8),bx(color,0,8))
 
@@ -387,8 +392,6 @@ function ILI9225:boxFill(x1,y1,x2,y2,color)
 	x2 = mf(x2+0.5)
 	y1 = mf(y1+0.5)
 	y2 = mf(y2+0.5)
-	if x1>x2 then x1,x2 = x2,x1 end
-	if y1>y2 then y1,y2 = y2,y1 end
 	h1,v1,h2,v2 = self:bTrans(x1,y1,x2,y2)
 	hn = math.abs(h2-h1)+1
 	vn = math.abs(v2-v1)+1
@@ -553,10 +556,16 @@ end
 function ILI9225:locate(x,y,mag,color,bgcolor,font)
 	local bx	= bit32.extract
 
-	self.x	= x or self.x
-	self.x0 = x or self.x0
-	self.y	= y or self.y
-	self.mag= mag or self.mag
+	if x then
+		self.x	= x
+		self.x0 = x
+	end
+	if y then
+		self.y	= y
+	end
+	if mag then
+		self.mag= mag
+	end
 	if color then
 		self.ch = bx(color,8,8)
 		self.cl = bx(color,0,8)
@@ -606,14 +615,13 @@ function ILI9225:print(str)
 			for j=1,fw do
 				bj = b[j]
 				for k=fh-1,0,-1 do n=bx(bj,k,1) ph,pl=n*ch+gh,n*cl+gl for l=1,mg do p[bk],p[bk+1],bk=ph,pl,bk+2 end end
-				if bk>1200 or mg>1 then
+				if bk>1500 or mg>1 then
 				   	s = string.char(table.unpack(p))
 					for l=1,mg do
 					   	self:writeRamData(s)
 					end
 					bk=1
 					p={}
-					collectgarbage()
 				end
 			end
 		end
@@ -623,7 +631,6 @@ function ILI9225:print(str)
 				 self:writeRamData(s)
 			end
 			p={}
-			collectgarbage()
 		end
 		self.x = self.x+mg*fw*il
 		if slen>0 or self.x>self.xMax then
