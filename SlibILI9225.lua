@@ -2,20 +2,19 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/04 rev.0.18 print faster
+-- 2018/09/05 rev.0.19 change init parameters
 -----------------------------------------------
 --[[
 Pin assign
-	PI	 SPI	init	mRst=1	mRst=0
-CMD	0x01 DO 	L		SDI		SDI
-D0	0x02 CLK	L		CLK		CLK
+	PI	 SPI	init	TYPE1	TYPE2
+CMD	0x01 DO 	L		SDI 	SDI
+D0	0x02 CLK	L		CLK 	CLK
 D1	0x04 CS 	H		RS		RS
 D2	0x08 DI 	I		CS		CS
-D3	0x10 RSV	L		Hi-Z	RST
+D3	0x10 RSV	L		RST 	Hi-Z
 --]]
 
 local ILI9225 = {
-mRst  = 0;
 id	  = 0;
 gs	  = 0;
 swp   = false;
@@ -177,17 +176,17 @@ end
 
 --[For user functions]--
 
--- mRst:reset mode, 0:D3=Hi-Z(no hard reset), 1:D3=RST=H/L
--- mRot:rotate mode, 0:upper pin1, 1:upper pin5, 2:lower pin1, 3:lower pin11
+-- type: 1:D3=RST=H/L, 2:D3=Hi-Z(no hard reset)
+-- rotate: 0:upper pin1, 1:upper pin5, 2:lower pin1, 3:lower pin11
 
-function ILI9225:init(mRst,mRot,xSize,ySize,offset)
+function ILI9225:init(type,rotate,xSize,ySize,offset)
 	local id,gs,swp,hDrc,vDrc
-	if mRst==0 then self.ctrl=0x0F end
-	if mRst==1 then self.ctrl=0x1F end
-	if mRot==0 then id,gs,swp,hDrc,vDrc = 0,0,false,-1, 1 end
-	if mRot==1 then id,gs,swp,hDrc,vDrc = 0,1,true,  1,-1 end
-	if mRot==2 then id,gs,swp,hDrc,vDrc = 3,0,false, 1,-1 end
-	if mRot==3 then id,gs,swp,hDrc,vDrc = 3,1,true, -1, 1 end
+	if type==1 then self.ctrl=0x1F end
+	if type==2 then self.ctrl=0x0F end
+	if rotate==0 then id,gs,swp,hDrc,vDrc = 0,0,false,-1, 1 end
+	if rotate==1 then id,gs,swp,hDrc,vDrc = 0,1,true,  1,-1 end
+	if rotate==2 then id,gs,swp,hDrc,vDrc = 3,0,false, 1,-1 end
+	if rotate==3 then id,gs,swp,hDrc,vDrc = 3,1,true, -1, 1 end
 
 	self.id	 = id
 	self.gs	 = gs
