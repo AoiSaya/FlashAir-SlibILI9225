@@ -41,6 +41,142 @@ mag   = 1;
 enable= false;
 }
 
+--[Low layer functions]--
+
+function ILI9225:pTrans(x,y)
+	if self.swp then x,y = y,x end
+	return self.hDrc*x+self.hOfs,self.vDrc*y+self.vOfs
+end
+
+function ILI9225:bTrans(x1,y1,x2,y2)
+	local hD,vD,hO,vO = self.hDrc,self.vDrc,self.hOfs,self.vOfs
+	if self.swp then x1,y1,x2,y2 = y1,x1,y2,x2 end
+	return hD*x1+hO,vD*y1+vO,hD*x2+hO,vD*y2+vO
+end
+
+function ILI9225:writeString(cmd,str,...)
+	local spi = fa.spi
+	spi("cs",0)
+	spi("write",cmd)
+	spi("cs",1)
+	spi("write",str,...)
+end
+
+function ILI9225:writeWord(cmd,data)
+	local spi = fa.spi
+	spi("cs",0)
+	spi("write",cmd)
+	spi("cs",1)
+	spi("bit",16)
+	spi("write",data)
+	spi("bit",8)
+end
+
+--[[
+function ILI9225:readWord(cmd,num)
+	local i,s,dt,ret
+	local pio = fa.pio
+	local ctrl= self.ctrl
+	local bx  = bit32.extract
+	local bb  = bit32.band
+
+	self:writeWord(0x66,0x0001)
+
+	for i=7,0,-1 do
+		dt = bx(cmd,i,1)
+		pio(ctrl,0x10+dt) -- CS=0,RS=0,CLK=0
+		pio(ctrl,0x12+dt) -- CS=0,RS=0,CLK=1
+	end
+	ret = 0
+	for i= 0,15 do
+		pio(ctrl-0x01,0x14) -- CS=0,RS=1,CLK=0,
+		s,dt = pio(ctrl-0x01,0x16) -- CS=0,RS=1,CLK=1
+		ret = ret*2+bb(dt,0x01)
+	end
+	pio(ctrl,0x18) -- CS=1,RS=0
+	self:writeWord(0x66,0x0000)
+
+	return ret
+end
+--]]
+
+function ILI9225:writeRam(h,v,str,...)
+	self:writeWord(0x20,h)
+	self:writeWord(0x21,v)
+	self:writeString(0x22,str,...)
+end
+
+function ILI9225:writeRamCmd(h,v)
+	local spi = fa.spi
+	self:writeWord(0x20,h)
+	self:writeWord(0x21,v)
+	spi("cs",0)
+	spi("write",0x22)
+	spi("cs",1)
+end
+
+function ILI9225:writeRamData(str,...)
+	fa.spi("write",str,...)
+end
+
+function ILI9225:setRamMode(BGR,MDT,DRC)
+	-- BGR 0:BGR order,1:RGB order
+	-- MDT 0:16bit,3:24bit
+	-- DRC 0:incliment to up,1:incliment to right
+	-- set GRAM writeWord direction and [12]BGR,[9:8]MDT,[5:4]ID=3,[3]AM
+	local val = 0x0000
+			+ BGR * 0x1000
+			+ MDT * 0x100
+			+ self.id * 0x10
+			+ bit32.bxor(DRC,(self.swp and 1 or 0)) * 0x8
+	self:writeWord(0x03,val)
+end
+
+function ILI9225:setWindow(h1,v1,h2,v2)
+	if h1>h2 then h1,h2=h2,h1 end
+	if v1>v2 then v1,v2=v2,v1 end
+	self:writeWord(0x36,h2)
+	self:writeWord(0x37,h1)
+	self:writeWord(0x38,v2)
+	self:writeWord(0x39,v1)
+end
+
+function ILI9225:resetWindow()
+	self:writeWord(0x36,self.hSize-1)
+	self:writeWord(0x37,0)
+	self:writeWord(0x38,self.rOfs+self.vSize-1)
+	self:writeWord(0x39,self.rOfs)
+end
+
+function ILI9225:clip(x1,y1,x2,y2)
+	local xMax = self.xMax
+	local yMax = self.yMax
+	local a1,ret
+	local xd,yd,x0,y0,xm,ym
+
+	xd = x2-x1
+	yd = y2-y1
+	a1 = y1*x2-y2*x1
+	y0 = (xd==0) and y1 or a1/xd
+	ym = (xd==0) and y2 or xMax*yd/xd+y0
+	x0 = (yd==0) and x1 or -a1/yd
+	xm = (yd==0) and x2 or yMax*xd/yd+x0
+
+	if x1>x2 then x1,y1,x2,y2=x2,y2,x1,y1 end
+	if x1<0 then x1,y1=0,y0 end
+	if x2>xMax then x2,y2=xMax,ym end
+
+	if y1>y2 then x1,y1,x2,y2=x2,y2,x1,y1 end
+	if y1<0 then x1,y1=x0,0 end
+	if y2>yMax then x2,y2=xm,yMax end
+
+	ret = x1<0 or y1<0 or x2>xMax or y2>yMax or x2<0 or y2<0 or x1>xMax or y1>yMax
+
+	return ret,x1,y1,x2,y2
+end
+
+--[For user functions]--
+
 -- mRst:reset mode, 0:D3=Hi-Z(no hard reset), 1:D3=RST=H/L
 -- mRot:rotate mode, 0:upper pin1, 1:upper pin5, 2:lower pin1, 3:lower pin11
 
@@ -80,112 +216,6 @@ function ILI9225:init(mRst,mRot,xSize,ySize,offset)
 	fa.pio(self.ctrl,0x18) -- RST=1,CS=1,RS=0
 	self:writeWord(0x28,0xCE) -- Software reset
 	sleep(50)
-end
-
-function ILI9225:pTrans(x,y)
-	if self.swp then x,y = y,x end
-	return self.hDrc*x+self.hOfs,self.vDrc*y+self.vOfs
-end
-
-function ILI9225:bTrans(x1,y1,x2,y2)
-	local hD,vD,hO,vO = self.hDrc,self.vDrc,self.hOfs,self.vOfs
-	if self.swp then x1,y1,x2,y2 = y1,x1,y2,x2 end
-	return hD*x1+hO,vD*y1+vO,hD*x2+hO,vD*y2+vO
-end
-
-function ILI9225:writeStart()
-	if not self.enable then
-		fa.spi("mode",0)
-		fa.spi("init",1) -- 0x17,0x04
-		fa.spi("bit",8)
-		fa.pio(self.ctrl,0x18) -- CS=1,RS=0
-		self.enable = true
-	end
-end
-
-function ILI9225:writeString(cmd,str,...)
-	local spi = fa.spi
-	spi("cs",0)
-	spi("write",cmd)
-	spi("cs",1)
-	spi("write",str,...)
-end
-
-function ILI9225:writeWord(cmd,data)
-	local spi = fa.spi
-	spi("cs",0)
-	spi("write",cmd)
-	spi("cs",1)
-	spi("bit",16)
-	spi("write",data)
-	spi("bit",8)
-end
-
-function ILI9225:writeRam(h,v,str,...)
-	self:writeWord(0x20,h)
-	self:writeWord(0x21,v)
-	self:writeString(0x22,str,...)
-end
-
-function ILI9225:writeRamCmd(h,v)
-	local spi = fa.spi
-	self:writeWord(0x20,h)
-	self:writeWord(0x21,v)
-	spi("cs",0)
-	spi("write",0x22)
-	spi("cs",1)
-end
-
-function ILI9225:writeRamData(str,...)
-	fa.spi("write",str,...)
-end
-
-function ILI9225:writeEnd()
-	if self.enable then
-		self:writeWord(0x00,0x0000)
-		fa.pio(self.ctrl,0x18) -- CS=1,RS=0
-		self.enable = falce
-	end
-end
-
-function ILI9225:readWord(cmd,num)
-	local i,s,dt,ret
-	local pio = fa.pio
-	local ctrl= self.ctrl
-	local bx  = bit32.extract
-	local bb  = bit32.band
-
-	self:writeWord(0x66,0x0001)
-
-	for i=7,0,-1 do
-		dt = bx(cmd,i,1)
-		pio(ctrl,0x10+dt) -- CS=0,RS=0,CLK=0
-		pio(ctrl,0x12+dt) -- CS=0,RS=0,CLK=1
-	end
-	ret = 0
-	for i= 0,15 do
-		pio(ctrl-0x01,0x14) -- CS=0,RS=1,CLK=0,
-		s,dt = pio(ctrl-0x01,0x16) -- CS=0,RS=1,CLK=1
-		ret = ret*2+bb(dt,0x01)
-	end
-	pio(ctrl,0x18) -- CS=1,RS=0
-	self:writeWord(0x66,0x0000)
-
-	return ret
-end
-
-function ILI9225:cls()
-	self:resetWindow()
-	self:writeRam(0,self.hSize*self.rOfs*2,"",self.hSize*self.vSize*2)
-	collectgarbage()
-end
-
-function ILI9225:dspOn()
-	self:writeWord(0x07,0x1017)
-end
-
-function ILI9225:dspOff()
-	self:writeWord(0x07,0x1014)
 end
 
 function ILI9225:setup()
@@ -239,33 +269,36 @@ function ILI9225:setup()
 	self:writeEnd()
 end
 
-function ILI9225:setWindow(h1,v1,h2,v2)
-	if h1>h2 then h1,h2=h2,h1 end
-	if v1>v2 then v1,v2=v2,v1 end
-	self:writeWord(0x36,h2)
-	self:writeWord(0x37,h1)
-	self:writeWord(0x38,v2)
-	self:writeWord(0x39,v1)
+function ILI9225:writeStart()
+	if not self.enable then
+		fa.spi("mode",0)
+		fa.spi("init",1) -- 0x17,0x04
+		fa.spi("bit",8)
+		fa.pio(self.ctrl,0x18) -- CS=1,RS=0
+		self.enable = true
+	end
 end
 
-function ILI9225:resetWindow()
-	self:writeWord(0x36,self.hSize-1)
-	self:writeWord(0x37,0)
-	self:writeWord(0x38,self.rOfs+self.vSize-1)
-	self:writeWord(0x39,self.rOfs)
+function ILI9225:writeEnd()
+	if self.enable then
+		self:writeWord(0x00,0x0000)
+		fa.pio(self.ctrl,0x18) -- CS=1,RS=0
+		self.enable = falce
+	end
 end
 
-function ILI9225:setRamMode(BGR,MDT,DRC)
-	-- BGR 0:BGR order,1:RGB order
-	-- MDT 0:16bit,3:24bit
-	-- DRC 0:incliment to up,1:incliment to right
-	-- set GRAM writeWord direction and [12]BGR,[9:8]MDT,[5:4]ID=3,[3]AM
-	local val = 0x0000
-			+ BGR * 0x1000
-			+ MDT * 0x100
-			+ self.id * 0x10
-			+ bit32.bxor(DRC,(self.swp and 1 or 0)) * 0x8
-	self:writeWord(0x03,val)
+function ILI9225:cls()
+	self:resetWindow()
+	self:writeRam(0,self.hSize*self.rOfs*2,"",self.hSize*self.vSize*2)
+	collectgarbage()
+end
+
+function ILI9225:dspOn()
+	self:writeWord(0x07,0x1017)
+end
+
+function ILI9225:dspOff()
+	self:writeWord(0x07,0x1014)
 end
 
 function ILI9225:pset(x,y,color)
@@ -275,33 +308,6 @@ function ILI9225:pset(x,y,color)
 	self:writeWord(0x20,h)
 	self:writeWord(0x21,v)
 	self:writeWord(0x22,color)
-end
-
-function ILI9225:clip(x1,y1,x2,y2)
-	local xMax = self.xMax
-	local yMax = self.yMax
-	local a1,ret
-	local xd,yd,x0,y0,xm,ym
-
-	xd = x2-x1
-	yd = y2-y1
-	a1 = y1*x2-y2*x1
-	y0 = (xd==0) and y1 or a1/xd
-	ym = (xd==0) and y2 or xMax*yd/xd+y0
-	x0 = (yd==0) and x1 or -a1/yd
-	xm = (yd==0) and x2 or yMax*xd/yd+x0
-
-	if x1>x2 then x1,y1,x2,y2=x2,y2,x1,y1 end
-	if x1<0 then x1,y1=0,y0 end
-	if x2>xMax then x2,y2=xMax,ym end
-
-	if y1>y2 then x1,y1,x2,y2=x2,y2,x1,y1 end
-	if y1<0 then x1,y1=x0,0 end
-	if y2>yMax then x2,y2=xm,yMax end
-
-	ret = x1<0 or y1<0 or x2>xMax or y2>yMax or x2<0 or y2<0 or x1>xMax or y1>yMax
-
-	return ret,x1,y1,x2,y2
 end
 
 function ILI9225:line(x1,y1,x2,y2,color)
@@ -640,5 +646,6 @@ function ILI9225:println(str)
 
 	return self.x,self.y
 end
+
 collectgarbage()
 return ILI9225
