@@ -2,7 +2,7 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/03 rev.0.17 print debug
+-- 2018/09/04 rev.0.18 print faster
 -----------------------------------------------
 --[[
 Pin assign
@@ -31,6 +31,7 @@ rOfs  = 0;
 ctrl  = 0x1F;
 x	  = 0;
 y	  = 0;
+x0	  = 0;
 ch	  = 0xFF; -- color ch*256+cl, BBBBB_GGGGGG_RRRRR(64K color)
 cl	  = 0xFF;
 gh	  = 0x00; -- bg color gh*256+gl
@@ -543,15 +544,13 @@ function ILI9225:put2(bitmap,x,y)
 	collectgarbage()
 end
 
-function ILI9225:locate(x,y,color,bgcolor,font,mag )
+function ILI9225:locate(x,y,mag,color,bgcolor,font)
 	local bx	= bit32.extract
 
-	if x then
-		self.x = x
-	end
-	if y then
-		self.y = y
-	end
+	self.x	= x or self.x
+	self.x0 = x or self.x0
+	self.y	= y or self.y
+	self.mag= mag or self.mag
 	if color then
 		self.ch = bx(color,8,8)
 		self.cl = bx(color,0,8)
@@ -563,16 +562,13 @@ function ILI9225:locate(x,y,color,bgcolor,font,mag )
 	if font then
 		self.font = font
 	end
-	if mag then
-		self.mag = mag
-	end
 end
 
 function ILI9225:print(str)
 	local i,j,k,l
 	local n,c,b,bk,bj,il
 	local h1,v1,h2,v2
-	local s
+	local s = ""
 	local p = {}
 	local fw = self.font.width
 	local fh = self.font.height
@@ -596,32 +592,37 @@ function ILI9225:print(str)
 		self:setWindow(h1,v1,h2,v2)
 		if self.id==0 then self:writeRamCmd(h1,v2) else	self:writeRamCmd(h2,v1) end
 
+		local ph,pl
 		bk=1
 		for i=is,is+il-1 do
 			c = str.sub(str,i,i)
 			b = self.font[c]
 			for j=1,fw do
 				bj = b[j]
-				for l=1,mg do
-					for k=fh-1,0,-1 do n=bx(bj,k,1) for l=1,mg do p[bk],p[bk+1]=n*ch+gh,n*cl+gl;bk=bk+2 end end
-					if bk>1000 then
-					   	self:writeRamData(string.char(table.unpack(p)))
-						bk=1
-						p={}
-						collectgarbage()
+				for k=fh-1,0,-1 do n=bx(bj,k,1) ph,pl=n*ch+gh,n*cl+gl for l=1,mg do p[bk],p[bk+1],bk=ph,pl,bk+2 end end
+				if bk>1200 or mg>1 then
+				   	s = string.char(table.unpack(p))
+					for l=1,mg do
+					   	self:writeRamData(s)
 					end
+					bk=1
+					p={}
+					collectgarbage()
 				end
 			end
 		end
 		if bk>1 and il>0 then
-			self:writeRamData(string.char(table.unpack(p)))
+			s = string.char(table.unpack(p))
+			for l=1,mg do
+				 self:writeRamData(s)
+			end
 			p={}
+			collectgarbage()
 		end
-		if slen>0 then
-			self.x,self.y = 0,self.y+mg*fh
+		self.x = self.x+mg*fw*il
+		if slen>0 or self.x>self.xMax then
+			self.x,self.y = self.x0,self.y+mg*fh
 			is = is+il
-		else
-			self.x = self.x+mg*fw*il
 		end
 		collectgarbage()
 	end
@@ -635,7 +636,7 @@ end
 
 function ILI9225:println(str)
 	self:print(str)
-	self.x,self.y = 0,self.y+self.font.height
+	self.x,self.y = self.x0,self.y+self.mag*self.font.height
 
 	return self.x,self.y
 end
