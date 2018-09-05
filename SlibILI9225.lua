@@ -2,7 +2,7 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/05 rev.0.19 change init parameters
+-- 2018/09/05 rev.0.20 setup move to init
 -----------------------------------------------
 --[[
 Pin assign
@@ -71,7 +71,7 @@ function ILI9225:readWord(cmd,num)
 	self:writeWord(0x66,0x0001)
 
 	for i=7,0,-1 do
-		dt = bx(cmd,i,1)
+		dt = bx(cmd,i)
 		pio(ctrl,0x10+dt) -- CS=0,RS=0,CLK=0
 		pio(ctrl,0x12+dt) -- CS=0,RS=0,CLK=1
 	end
@@ -174,49 +174,6 @@ function ILI9225:clip(x1,y1,x2,y2)
 	return ret,x1,y1,x2,y2
 end
 
---[For user functions]--
-
--- type: 1:D3=RST=H/L, 2:D3=Hi-Z(no hard reset)
--- rotate: 0:upper pin1, 1:upper pin5, 2:lower pin1, 3:lower pin11
-
-function ILI9225:init(type,rotate,xSize,ySize,offset)
-	local id,gs,swp,hDrc,vDrc
-	if type==1 then self.ctrl=0x1F end
-	if type==2 then self.ctrl=0x0F end
-	if rotate==0 then id,gs,swp,hDrc,vDrc = 0,0,false,-1, 1 end
-	if rotate==1 then id,gs,swp,hDrc,vDrc = 0,1,true,  1,-1 end
-	if rotate==2 then id,gs,swp,hDrc,vDrc = 3,0,false, 1,-1 end
-	if rotate==3 then id,gs,swp,hDrc,vDrc = 3,1,true, -1, 1 end
-
-	self.id	 = id
-	self.gs	 = gs
-	self.swp = swp
-	if swp then
-		self.hSize = ySize
-		self.vSize = xSize
-	else
-		self.hSize = xSize
-		self.vSize = ySize
-	end
-	self.hDrc = hDrc
-	self.vDrc = vDrc
-	self.hOfs = (hDrc>0) and 0 or self.hSize-1
-	self.vOfs = (vDrc>0) and offset or self.vSize+offset-1
-	self.mRot = mRot
-	self.xMax = xSize-1
-	self.yMax = ySize-1
-	self.rOfs = offset;
-
--- reset sequence
-	fa.pio(self.ctrl,0x10) -- RST=1,CS=0,RS=0
-	sleep(1)
-	fa.pio(self.ctrl,0x00) -- RST=0,CS=0,RS=0
-	sleep(10)
-	fa.pio(self.ctrl,0x18) -- RST=1,CS=1,RS=0
-	self:writeWord(0x28,0xCE) -- Software reset
-	sleep(50)
-end
-
 function ILI9225:setup()
 	self:writeStart()
 -- initial sequence
@@ -266,6 +223,50 @@ function ILI9225:setup()
 	self:writeWord(0x59,0x0710)
 	sleep(50)
 	self:writeEnd()
+end
+
+--[For user functions]--
+
+-- type: 1:D3=RST=H/L, 2:D3=Hi-Z(no hard reset)
+-- rotate: 0:upper pin1, 1:upper pin5, 2:lower pin1, 3:lower pin11
+
+function ILI9225:init(type,rotate,xSize,ySize,offset)
+	local id,gs,swp,hDrc,vDrc
+	if type==1 then self.ctrl=0x1F end
+	if type==2 then self.ctrl=0x0F end
+	if rotate==0 then id,gs,swp,hDrc,vDrc = 0,0,false,-1, 1 end
+	if rotate==1 then id,gs,swp,hDrc,vDrc = 0,1,true,  1,-1 end
+	if rotate==2 then id,gs,swp,hDrc,vDrc = 3,0,false, 1,-1 end
+	if rotate==3 then id,gs,swp,hDrc,vDrc = 3,1,true, -1, 1 end
+
+	self.id	 = id
+	self.gs	 = gs
+	self.swp = swp
+	if swp then
+		self.hSize = ySize
+		self.vSize = xSize
+	else
+		self.hSize = xSize
+		self.vSize = ySize
+	end
+	self.hDrc = hDrc
+	self.vDrc = vDrc
+	self.hOfs = (hDrc>0) and 0 or self.hSize-1
+	self.vOfs = (vDrc>0) and offset or self.vSize+offset-1
+	self.mRot = mRot
+	self.xMax = xSize-1
+	self.yMax = ySize-1
+	self.rOfs = offset;
+
+-- reset sequence
+	fa.pio(self.ctrl,0x10) -- RST=1,CS=0,RS=0
+	sleep(1)
+	fa.pio(self.ctrl,0x00) -- RST=0,CS=0,RS=0
+	sleep(10)
+	fa.pio(self.ctrl,0x18) -- RST=1,CS=1,RS=0
+	self:writeWord(0x28,0xCE) -- Software reset
+	sleep(50)
+	self:setup()
 end
 
 function ILI9225:writeStart()
@@ -580,8 +581,9 @@ end
 
 function ILI9225:print(str)
 	local i,j,k,l
-	local n,c,b,bk,bj,il
+	local n,c,b,bk,bj,il,is,sn,slen
 	local h1,v1,h2,v2
+	local ph,pl
 	local s = ""
 	local p = {}
 	local fw = self.font.width
@@ -606,18 +608,17 @@ function ILI9225:print(str)
 		self:setWindow(h1,v1,h2,v2)
 		if self.id==0 then self:writeRamCmd(h1,v2) else	self:writeRamCmd(h2,v1) end
 
-		local ph,pl
 		bk=1
 		for i=is,is+il-1 do
 			c = str.sub(str,i,i)
 			b = self.font[c]
 			for j=1,fw do
 				bj = b[j]
-				for k=fh-1,0,-1 do n=bx(bj,k,1) ph,pl=n*ch+gh,n*cl+gl for l=1,mg do p[bk],p[bk+1],bk=ph,pl,bk+2 end end
+				for k=1,fh do n=bx(bj,fh-k) ph,pl=n*ch+gh,n*cl+gl for l=1,mg do p[bk],p[bk+1],bk=ph,pl,bk+2 end end
 				if bk>1500 or mg>1 then
-				   	s = string.char(table.unpack(p))
+					s = string.char(table.unpack(p))
 					for l=1,mg do
-					   	self:writeRamData(s)
+						self:writeRamData(s)
 					end
 					bk=1
 					p={}
@@ -640,8 +641,6 @@ function ILI9225:print(str)
 	end
 	self:resetWindow()
 	self:setRamMode(0,0,0)
-	p = nil
-	collectgarbage()
 
 	return self.x,self.y
 end
