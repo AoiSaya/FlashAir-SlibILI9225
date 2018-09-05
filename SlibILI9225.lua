@@ -2,7 +2,7 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/05 rev.0.20 setup move to init
+-- 2018/09/06 rev.0.21 print faster
 -----------------------------------------------
 --[[
 Pin assign
@@ -581,20 +581,18 @@ end
 
 function ILI9225:print(str)
 	local i,j,k,l
-	local n,c,b,bk,bj,il,is,sn,slen
+	local n,c,b,bk,bj,il,is,sn,slen,sp
 	local h1,v1,h2,v2
-	local ph,pl
 	local s = ""
 	local p = {}
 	local fw = self.font.width
 	local fh = self.font.height
-	local gh = self.gh
-	local gl = self.gl
-	local ch = self.ch-gh
-	local cl = self.cl-gl
 	local mg = self.mag
 	local bx = bit32.extract
 	local mf = math.floor
+	local sc = {}
+	sc[0] = string.char(self.gh,self.gl)
+	sc[1] = string.char(self.ch,self.cl)
 
 	self:setRamMode(0,0,1)
 
@@ -614,9 +612,9 @@ function ILI9225:print(str)
 			b = self.font[c]
 			for j=1,fw do
 				bj = b[j]
-				for k=1,fh do n=bx(bj,fh-k) ph,pl=n*ch+gh,n*cl+gl for l=1,mg do p[bk],p[bk+1],bk=ph,pl,bk+2 end end
+				for k=1,fh do sp=sc[bx(bj,fh-k)] for l=1,mg do p[bk],bk=sp,bk+1 end end
 				if bk>1500 or mg>1 then
-					s = string.char(table.unpack(p))
+					s = table.concat(p)
 					for l=1,mg do
 						self:writeRamData(s)
 					end
@@ -626,7 +624,7 @@ function ILI9225:print(str)
 			end
 		end
 		if bk>1 and il>0 then
-			s = string.char(table.unpack(p))
+			s = table.concat(p)
 			for l=1,mg do
 				 self:writeRamData(s)
 			end
@@ -637,6 +635,7 @@ function ILI9225:print(str)
 			self.x,self.y = self.x0,self.y+mg*fh
 			is = is+il
 		end
+		s=""
 		collectgarbage()
 	end
 	self:resetWindow()
