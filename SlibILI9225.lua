@@ -2,7 +2,7 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/06 rev.0.21 print faster
+-- 2018/09/06 rev.0.22 print faster
 -----------------------------------------------
 --[[
 Pin assign
@@ -31,10 +31,8 @@ ctrl  = 0x1F;
 x	  = 0;
 y	  = 0;
 x0	  = 0;
-ch	  = 0xFF; -- color ch*256+cl, BBBBB_GGGGGG_RRRRR(64K color)
-cl	  = 0xFF;
-gh	  = 0x00; -- bg color gh*256+gl
-gl	  = 0x00;
+fc	  = "\255\255";
+bc	  = "\000\000";
 font  = {};
 mag   = 1;
 enable= false;
@@ -567,12 +565,10 @@ function ILI9225:locate(x,y,mag,color,bgcolor,font)
 		self.mag= mag
 	end
 	if color then
-		self.ch = bx(color,8,8)
-		self.cl = bx(color,0,8)
+		self.fc = string.char(bx(color,8,8),bx(color,0,8))
 	end
 	if bgcolor then
-		self.gh = bx(bgcolor,8,8)
-		self.gl = bx(bgcolor,0,8)
+		self.bc = string.char(bx(bgcolor,8,8),bx(bgcolor,0,8))
 	end
 	if font then
 		self.font = font
@@ -580,7 +576,6 @@ function ILI9225:locate(x,y,mag,color,bgcolor,font)
 end
 
 function ILI9225:print(str)
-	local i,j,k,l
 	local n,c,b,bk,bj,il,is,sn,slen,sp
 	local h1,v1,h2,v2
 	local s = ""
@@ -590,9 +585,8 @@ function ILI9225:print(str)
 	local mg = self.mag
 	local bx = bit32.extract
 	local mf = math.floor
-	local sc = {}
-	sc[0] = string.char(self.gh,self.gl)
-	sc[1] = string.char(self.ch,self.cl)
+	local s0 = string.rep(self.bc,mg)
+	local s1 = string.rep(self.fc,mg)
 
 	self:setRamMode(0,0,1)
 
@@ -612,8 +606,8 @@ function ILI9225:print(str)
 			b = self.font[c]
 			for j=1,fw do
 				bj = b[j]
-				for k=1,fh do sp=sc[bx(bj,fh-k)] for l=1,mg do p[bk],bk=sp,bk+1 end end
-				if bk>1500 or mg>1 then
+				for k=1,fh do p[bk]=bx(bj,fh-k)>0 and s1 or s0 bk=bk+1 end
+				if bk*mg>1600 or mg>1 then
 					s = table.concat(p)
 					for l=1,mg do
 						self:writeRamData(s)
