@@ -2,7 +2,7 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/06 rev.0.22 print faster
+-- 2018/09/07 rev.0.23 print faster
 -----------------------------------------------
 --[[
 Pin assign
@@ -270,7 +270,7 @@ end
 function ILI9225:writeStart()
 	if not self.enable then
 		fa.spi("mode",0)
-		fa.spi("init",1) -- 0x17,0x04
+		fa.spi("init",0) -- 0x17,0x04
 		fa.spi("bit",8)
 		fa.pio(self.ctrl,0x18) -- CS=1,RS=0
 		self.enable = true
@@ -587,6 +587,7 @@ function ILI9225:print(str)
 	local mf = math.floor
 	local s0 = string.rep(self.bc,mg)
 	local s1 = string.rep(self.fc,mg)
+	local ti = table.insert
 
 	self:setRamMode(0,0,1)
 
@@ -605,9 +606,9 @@ function ILI9225:print(str)
 			c = str.sub(str,i,i)
 			b = self.font[c]
 			for j=1,fw do
-				bj = b[j]
-				for k=1,fh do p[bk]=bx(bj,fh-k)>0 and s1 or s0 bk=bk+1 end
-				if bk*mg>1600 or mg>1 then
+				bj,bk=b[j],bk+fh
+				for k=fh-1,0,-1 do ti(p,bx(bj,k)>0 and s1 or s0) end
+				if bk>800 or mg>1 then
 					s = table.concat(p)
 					for l=1,mg do
 						self:writeRamData(s)
