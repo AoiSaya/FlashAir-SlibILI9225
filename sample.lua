@@ -158,7 +158,3 @@ end
 --]]
 end
 
-local soraBmp = bmp:loadFile(imgDir .. "HiramekiNoSora.bmp")
-lcd:put(soraBmp,0,0)
-print(collectgarbage("count"))
-
