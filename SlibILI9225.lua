@@ -2,7 +2,7 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/07 rev.0.23 print faster
+-- 2018/09/08 rev.0.24 print faster
 -----------------------------------------------
 --[[
 Pin assign
@@ -270,7 +270,7 @@ end
 function ILI9225:writeStart()
 	if not self.enable then
 		fa.spi("mode",0)
-		fa.spi("init",0) -- 0x17,0x04
+		fa.spi("init",1)
 		fa.spi("bit",8)
 		fa.pio(self.ctrl,0x18) -- CS=1,RS=0
 		self.enable = true
