@@ -2,7 +2,7 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/08 rev.0.24 print faster
+-- 2018/09/09 rev.0.25 print faster
 -----------------------------------------------
 --[[
 Pin assign
@@ -317,10 +317,10 @@ function ILI9225:line(x1,y1,x2,y2,color)
 	local bx = bit32.extract
 	local mf = math.floor
 	local col = string.char(bx(color,8,8),bx(color,0,8))
-	local dat
+	local dat, ret
 
 	if	x1<0 or y1<0 or x2>xMax or y2>yMax or x2<0 or y2<0 or x1>xMax or y1>yMax then
-		ret,x1,y1,x2,y2 = self:clip(x1,y1,x2,y2)
+		if self.clip then ret,x1,y1,x2,y2 = self:clip(x1,y1,x2,y2) else ret = true end
 		if ret then return end
 	end
 
