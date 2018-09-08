@@ -1,6 +1,12 @@
 # FlashAir-SlibILI9225
 
+<<<<<<< HEAD
 Lua library for TFT display modules with ILI9225 for FlashAir.
+=======
+Lua library for TFT display modules with ILI9225 for FlashAir.  
+  
+<img src="img/ILI9225connect01.jpg" width="500">
+>>>>>>> a1aab659fc6d827fe75e590c31c237ad79105b81
 
 ## Requirement
 
