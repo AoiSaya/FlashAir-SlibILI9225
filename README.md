@@ -105,11 +105,11 @@ x,y=ILI9225:println(str) | Print alphabets and creates a new line and same as ab
 
 ## Sample program
 
-sample.lua
-lib/SlibILI9225.lua
-lib/SlibBMP.lua -- Copy from FlashAir-SlibBMP repository
-img/balloon01
-font/font74.lua
+sample.lua  
+lib/SlibILI9225.lua  
+lib/SlibBMP.lua -- Copy from FlashAir-SlibBMP repository  
+img/balloon01.bmp  
+font/font74.lua  
 
 These files copy to somewhere in FlashAir.
 
