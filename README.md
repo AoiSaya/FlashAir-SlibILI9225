@@ -2,7 +2,7 @@
 
 Lua library for TFT display modules with ILI9225 for FlashAir.  
   
-<img src="img/ILI9225connect01.jpg" width="400">
+<img src="img/ILI9225connect01.jpg" width="500">
 
 ## Requirement
 
