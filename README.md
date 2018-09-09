@@ -4,15 +4,11 @@ Lua library for TFT display modules with ILI9225 for FlashAir.
   
 <img src="img/ILI9225connect01.jpg" width="500">
 
-## Requirement
+## Tested equipment
 
-Tested on this 2.2" TFT display module with ILI9225 and FlashAir W-04 v4.00.03.
+Tested on this 2.2-inch TFT display module with ILI9225 and FlashAir W-04 v4.00.03.
 
 <img src="img/ILI9225front01.jpg" width="300"> <img src="img/ILI9225back01.jpg" width="300">
-
-## Install
-
-SlibILI9225.lua -- Copy to somewhere in Lua's search path.
 
 ## FlashAir to TFT module connections
 
@@ -48,6 +44,10 @@ LED |---     |3.3V
 VCC |VCC (4) |3.3V   
 GND |VSS(3,6)|GND    
 
+## Install
+
+SlibILI9225.lua -- Copy to somewhere in Lua's search path.
+
 ## Color format of functions
 
 color   : BBBBB_GGGGGG_RRRRR (64K(16bpp) color)  
@@ -62,7 +62,7 @@ bgcolor : BBBBB_GGGGGG_RRRRR (64K(16bpp) back ground color)
     bitmap.height -- bitmap height  
     bitmap.bit    -- bpp, 24 or 16(BBBBB_GGGGGG_RRRRR format)
     bitmap.flat   -- 1:Flat(Stuffing without leaving spaces for small image), 0:Stored in an array for each line.  
-    bitmap.data   -- bitamp data  
+    bitmap.data   -- bitmap data  
 
 ## Internal font data format
 
@@ -99,7 +99,7 @@ ILI9225:circle(x,y,xr,yr,color) | Plot circle of center(x,y), radius(xr,yr).
 ILI9225:circleFill(x,y,xr,yr,color) | Plot filled circle of center(x,y), radius(xr,yr).
 ILI9225:put(bitmap,x,y) | Put 16 or 24bpp bitmap at upper left coordinates with (x,y).
 ILI9225:put2(bitmap,x,y)| Put 16bpp flat bitmap faster at upper left coordinates with (x,y).
-ILI9225:locate(x,y,mag,color,bgcolor,font) | Locate cursor and set attributions and font.<br>If you do not want to change any arguments you can substitute nil.
+ILI9225:locate(x,y,mag,color,bgcolor,font) | Locate cursor, set print area(x,y)-(xSize-1,ySize-1), attributions and font.<br>If you do not want to change any arguments you can substitute nil.
 x,y=ILI9225:print(str) | Print alphabets and return next cursor position.
 x,y=ILI9225:println(str) | Print alphabets and creates a new line and same as above.
 
