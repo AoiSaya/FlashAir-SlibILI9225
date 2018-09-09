@@ -2,7 +2,7 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/09 rev.0.25 print faster
+-- 2018/09/09 rev.0.26 locate modified
 -----------------------------------------------
 --[[
 Pin assign
@@ -136,13 +136,13 @@ end
 
 function ILI9225:pTrans(x,y)
 	if self.swp then x,y = y,x end
-	return self.hDrc*x+self.hOfs,self.vDrc*y+self.vOfs
+	return self.hDrc*x+self.hOfs, self.vDrc*y+self.vOfs
 end
 
 function ILI9225:bTrans(x1,y1,x2,y2)
-	local hD,vD,hO,vO = self.hDrc,self.vDrc,self.hOfs,self.vOfs
+	local hD,vD,hO,vO = self.hDrc, self.vDrc, self.hOfs, self.vOfs
 	if self.swp then x1,y1,x2,y2 = y1,x1,y2,x2 end
-	return hD*x1+hO,vD*y1+vO,hD*x2+hO,vD*y2+vO
+	return hD*x1+hO, vD*y1+vO, hD*x2+hO, vD*y2+vO
 end
 
 function ILI9225:clip(x1,y1,x2,y2)
@@ -309,7 +309,7 @@ function ILI9225:pset(x,y,color)
 end
 
 function ILI9225:line(x1,y1,x2,y2,color)
-	local i,swap
+	local swap
 	local h1,h2,hn,ha,hb,hd,hv,hr,hs,h
 	local v1,v2,vn,vd,v
 	local xMax = self.xMax
@@ -369,7 +369,6 @@ function ILI9225:box(x1,y1,x2,y2,color)
 end
 
 function ILI9225:boxFill(x1,y1,x2,y2,color)
-	local i
 	local xMax = self.xMax
 	local yMax = self.yMax
 	local bx = bit32.extract
@@ -415,7 +414,7 @@ function ILI9225:boxFill(x1,y1,x2,y2,color)
 end
 
 function ILI9225:circle(x,y,xr,yr,color)
-	local i,c
+	local c
 	local x1,y1,x2,y2
 	local sin = math.sin
 	local cos = math.cos
@@ -435,7 +434,7 @@ function ILI9225:circle(x,y,xr,yr,color)
 end
 
 function ILI9225:circleFill(x,y,xr,yr,color)
-	local i,j,h1,v1,h2,v2
+	local h1,v1,h2,v2
 	local x1,x2,y1,y2,xs,r2,xn
 	local xMax = self.xMax
 	local yMax = self.yMax
@@ -480,7 +479,6 @@ function ILI9225:circleFill(x,y,xr,yr,color)
 end
 
 function ILI9225:put(bitmap,x,y)
-	local i
 	local bx,by= 0,0
 	local xMax = self.xMax
 	local yMax = self.yMax
@@ -552,17 +550,18 @@ function ILI9225:put2(bitmap,x,y)
 end
 
 function ILI9225:locate(x,y,mag,color,bgcolor,font)
-	local bx	= bit32.extract
+	local bx = bit32.extract
+	local mf = math.floor
 
 	if x then
-		self.x	= x
-		self.x0 = x
+		self.x	= mf(x+0.5)
+		self.x0 = self.x
 	end
 	if y then
-		self.y	= y
+		self.y	= mf(y+0.5)
 	end
 	if mag then
-		self.mag= mag
+		self.mag= mf(mag)
 	end
 	if color then
 		self.fc = string.char(bx(color,8,8),bx(color,0,8))
