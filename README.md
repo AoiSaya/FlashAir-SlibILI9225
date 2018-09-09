@@ -101,15 +101,15 @@ ILI9225:put(bitmap,x,y) | Put 16 or 24bpp bitmap at upper left coordinates with 
 ILI9225:put2(bitmap,x,y)| Put 16bpp flat bitmap faster at upper left coordinates with (x,y).
 ILI9225:locate(x,y,mag,color,bgcolor,font) | Locate cursor, set print area(x,y)-(xSize-1,ySize-1), attributions and font.<br>If you do not want to change any arguments you can substitute nil.
 x,y=ILI9225:print(str) | Print alphabets and return next cursor position.
-x,y=ILI9225:println(str) | Print alphabets and creates a new line and same as above.
+x,y=ILI9225:println(str) | Print alphabets, creates a new line and same as above.
 
 ## Sample program
 
-sample.lua  
-lib/SlibILI9225.lua  
-lib/SlibBMP.lua -- Copy from FlashAir-SlibBMP repository  
-img/balloon01.bmp  
-font/font74.lua  
+>sample.lua  
+>lib/SlibILI9225.lua  
+>lib/SlibBMP.lua `-- Copy from FlashAir-SlibBMP repository`  
+>img/balloon01.bmp  
+>font/font74.lua  
 
 These files copy to somewhere in FlashAir.
 
