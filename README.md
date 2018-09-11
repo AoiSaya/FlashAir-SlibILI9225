@@ -27,7 +27,7 @@ LED |---     |3.3V
 VCC |VCC (4) |3.3V   
 GND |VSS(3,6)|GND    
 
-**Type2**
+**Type2**  
 Module reset is only a soft reset.  
 DAT3 for FlashAir can be used for another purpose.  
 
@@ -85,7 +85,6 @@ bgcolor : BBBBB_GGGGGG_RRRRR (64K(16bpp) back ground color)
 command | description
 --- | ---
 ILI9225:init(type,rotate,xSize,ySize,offset) | Parameter initialization and reset LCD module.<br>type: 1:D3=RST=H/L, 2:D3=Hi-Z(no hard reset)<br>rotate: 0:Vertical default, 1:Horizontal default, 2:Vertical reverse, 3:Horizontal reverse<br>xSize:LCD x size, ySize:LCD y size, offset:RAM address offset
-ILI9225:setup() | Setup LCD module.
 ILI9225:writeStart() | Enable control. (CS=0)
 ILI9225:writeEnd()   | Disable control. (CS=1)
 ILI9225:cls()        | Clear screen.
@@ -97,8 +96,8 @@ ILI9225:box(x1,y1,x2,y2,color) | Plot box (x1,y1)-(x2,y2).
 ILI9225:boxFill(x1,y1,x2,y2,color) | Plot filled box (x1,y1)-(x2,y2).
 ILI9225:circle(x,y,xr,yr,color) | Plot circle of center(x,y), radius(xr,yr).
 ILI9225:circleFill(x,y,xr,yr,color) | Plot filled circle of center(x,y), radius(xr,yr).
-ILI9225:put(bitmap,x,y) | Put 16 or 24bpp bitmap at upper left coordinates with (x,y).
-ILI9225:put2(bitmap,x,y)| Put 16bpp flat bitmap faster at upper left coordinates with (x,y).
+ILI9225:put(x,y,bitmap) | Put 16 or 24bpp bitmap at upper left coordinates with (x,y).
+ILI9225:put2(x,y,bitmap)| Put 16bpp flat bitmap faster at upper left coordinates with (x,y).
 ILI9225:locate(x,y,mag,color,bgcolor,font) | Locate cursor, set print area(x,y)-(xSize-1,ySize-1), attributions and font.<br>If you do not want to change any arguments you can substitute nil.
 x,y=ILI9225:print(str) | Print alphabets and return next cursor position.
 x,y=ILI9225:println(str) | Print alphabets, creates a new line and same as above.
