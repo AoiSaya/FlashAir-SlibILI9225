@@ -2,7 +2,7 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/09 rev.0.26 locate modified
+-- 2018/09/11 rev.0.27 change order of put,put2 param
 -----------------------------------------------
 --[[
 Pin assign
@@ -478,7 +478,7 @@ function ILI9225:circleFill(x,y,xr,yr,color)
 	collectgarbage()
 end
 
-function ILI9225:put(bitmap,x,y)
+function ILI9225:put(x,y,bitmap)
 	local bx,by= 0,0
 	local xMax = self.xMax
 	local yMax = self.yMax
@@ -539,7 +539,7 @@ function ILI9225:put(bitmap,x,y)
 	collectgarbage()
 end
 
-function ILI9225:put2(bitmap,x,y)
+function ILI9225:put2(x,y,bitmap)
 	local x2 = x+bitmap.width-1
 	local y2 = y+bitmap.height-1
 	local h1,v1,h2,v2 = self:bTrans(x,y,x2,y2)
