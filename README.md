@@ -121,4 +121,3 @@ These files copy to somewhere in FlashAir.
 
 [GitHub/AoiSaya](https://github.com/AoiSaya)  
 [Twitter ID @La_zlo](https://twitter.com/La_zlo)
-r.com/La_zlo)
