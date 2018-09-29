@@ -12,7 +12,9 @@ Tested on this 2.2-inch TFT display module with ILI9225 and FlashAir W-04 v4.00.
 
 ## FlashAir to TFT module connections
 
-**Type1**  
+Please choose your favorite case.
+
+**Case1**  
 Module Reset is hard reset.  
 
 ILI9225 TFT | FlashAir(Pin#) | Power
@@ -27,9 +29,9 @@ LED |---     |3.3V
 VCC |VCC (4) |3.3V   
 GND |VSS(3,6)|GND    
 
-**Type2**  
+**Case2**  
 Module reset is only a soft reset.  
-DAT3 for FlashAir can be used for another purpose.  
+DAT3 of FlashAir can be used for another purpose.  
 
 ILI9225 TFT | FlashAir(Pin#) | Power
 --- | --- | ---
