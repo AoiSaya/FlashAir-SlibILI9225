@@ -2,7 +2,7 @@
 -- Sample of SlibILI9225.lua for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/09 rev.0.01
+-- 2018/10/12 rev.0.02
 -----------------------------------------------
 
 local script_path = function()
@@ -60,7 +60,6 @@ for rot = 0,3 do
 	local mx,my = 176,220
 	if rot==1 or rot==3 then mx,my=my,mx end
 	lcd:init(1,rot,mx, my,0)
-	lcd:setup()
 	lcd:writeStart()
 
 	lcd:cls()
@@ -148,8 +147,8 @@ end
 --put, put2 demo
 	local balloonBmp = bmp:loadFile(imgDir .. "balloon01.bmp",1)
 	local balloonImg = bmp:conv64K(balloonBmp)
-	lcd:put(balloonBmp,0,0)
-	lcd:put2(balloonImg,64,64)
+	lcd:put(0,0,balloonBmp)
+	lcd:put2(64,64,balloonImg)
 
 	sleep(1000)
 	balloonBmp=nil
