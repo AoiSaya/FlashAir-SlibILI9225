@@ -2,7 +2,7 @@
 -- draw mandelbrot @ILI9225 for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/10/13 rev.0.01
+-- 2018/10/14 rev.0.02
 -----------------------------------------------
 
 local function script_path()
@@ -11,6 +11,7 @@ local function script_path()
 end
 
 local function isBreak()
+	sleep(1)
 	return (fa.sharedmemory("read", 0x00, 0x01, "") == "!")
 end
 
@@ -21,17 +22,22 @@ local myDir  = script_path()
 local libDir = myDir.."lib/"
 local lcd = require(libDir .. "SlibILI9225")
 
-local rot	= 1
-local mx,my = 220,176
+local rot	= 1 	   -- LCD direction
+local mx,my = 220,176  -- LCD size
 lcd:init(1,rot,mx, my,0)
 lcd:writeStart()
 lcd:cls()
 lcd:dspOn()
 
-local x1,y1,x2,y2 = -2.10,-1.2,0.9,1.2
-local xDot = 220
-local yDot = 176
-local n    = 100
+local x0,y0 = -0.6,0 -- central coordinates
+local mag	= 3/4.4  -- magnification
+local n 	= 100	 -- repeat upper limit
+local wx1,wy1,wx2,wy2 = 0,0,mx-1,my-1  -- drawing area
+
+local xDot	= wx2-wx1+1
+local yDot	= wy2-wy1+1
+local x1,y1 = x0-(mag*xDot)/100.0, y0-(mag*yDot)/100.0
+local x2,y2 = x0+(mag*xDot)/100.0, y0+(mag*yDot)/100.0
 local t, x, y, r, g, r2, g2
 
 t=os.clock()
@@ -49,8 +55,8 @@ for i=0,xDot-1 do
 				break
 			end
 		end
-		if isBreak() then return end
 	end
+	if isBreak() then return -1 end
 end
 t = os.clock()-t
 print(t)
