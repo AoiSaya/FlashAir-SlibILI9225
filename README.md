@@ -106,7 +106,8 @@ x,y=ILI9225:println(str) | Print alphabets, creates a new line and same as above
 
 ## Sample program
 
->sample.lua  
+>sample.lua      `-- draw graphics demo`
+>mandelbrot.lua  `-- draw Mandelbrot set`
 >lib/SlibILI9225.lua  
 >lib/SlibBMP.lua `-- Copy from FlashAir-SlibBMP repository`  
 >img/balloon01.bmp  
