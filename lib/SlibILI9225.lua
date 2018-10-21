@@ -2,16 +2,16 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/10/21 rev.0.28 support PIO for D3
+-- 2018/10/22 rev.0.29 support LED for D3
 -----------------------------------------------
 --[[
 Pin assign
-	PI	 SPI	init	TYPE1	TYPE2
-CMD	0x01 DO 	L		SDI 	SDI
-D0	0x02 CLK	L		CLK 	CLK
-D1	0x04 CS 	H		RS		RS
-D2	0x08 DI 	I		CS		CS
-D3	0x10 RSV	L		RST 	PIO
+	PIO	 SPI	TYPE1	TYPE2	TYPE3
+CMD	0x01 DO 	SDI		SDI		SDI
+D0	0x02 CLK	CLK		CLK		CLK
+D1	0x04 CS 	RS		RS		RS
+D2	0x08 DI 	CS		CS		CS
+D3	0x10 RSV	RST		PIO		LED
 --]]
 
 local ILI9225 = {
@@ -658,7 +658,7 @@ end
 function ILI9225:pio(ctrl, data)
 	local dat,s,ret
 
-	if self.type==2 then
+	if self.type>1 then
 		self.ctrl = bit32.band(self.ctrl,0x0F)+ctrl*0x10
 		self.piod = data*0x10
 		dat = bit32.band(enable and 0x0C or 0x04)+self.piod
@@ -671,11 +671,11 @@ end
 
 function ILI9225:ledOn()
 	sleep(30)
-	self:pio(1, 1)
+	self:pio(1,1)
 end
 
 function ILI9225:ledOff()
-	self:pio(1, 0)
+	self:pio(1,0)
 end
 
 collectgarbage()

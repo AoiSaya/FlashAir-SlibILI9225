@@ -2,7 +2,7 @@
 -- Sample of SlibILI9225.lua for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/10/21 rev.0.03 support PIO for D3
+-- 2018/10/22 rev.0.04 support LED for D3
 -----------------------------------------------
 
 local script_path = function()
@@ -60,7 +60,7 @@ for rot = 0,3 do
 	local mx,my = 176,220
 	if rot==1 or rot==3 then mx,my=my,mx end
 
-	lcd:init(2,rot,mx, my,0)
+	lcd:init(3,rot,mx, my,0)
 	lcd:dspOn()
 	lcd:ledOn()
 
