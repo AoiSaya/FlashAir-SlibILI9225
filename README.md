@@ -119,11 +119,13 @@ ILI9225:put2(x,y,bitmap)| Put 16bpp flat bitmap faster at upper left coordinates
 ILI9225:locate(x,y,mag,color,bgcolor,font) | Locate cursor, set print area(x,y)-(xSize-1,ySize-1), attributions and font.<br>If you do not want to change any arguments you can substitute nil.
 x,y=ILI9225:print(str) | Print alphabets and return next cursor position.
 x,y=ILI9225:println(str) | Print alphabets, creates a new line and return next cursor position.
-ret=ILI9225:pio(ctrl,data) | Pio control of DAT3 at type==2. If type==1 then return nil.<br>ctrl is 0:input, 1:output. data is value for output and return input value.
-ILI9225:ledOn() | LED backlight ON at type==3
-ILI9225:ledOff() | LED backlight OFF at type==3
+ret=ILI9225:pio(ctrl,data) | Pio control of DAT3 at type2. If type1 then return nil.<br>ctrl is 0:input, 1:output. data is value for output and return input value.<br> Default is input.
+ILI9225:ledOn() | LED backlight ON at type3.
+ILI9225:ledOff() | LED backlight OFF at type3.
 
 ## Sample program
+
+<img src="img/ILI9225sample01.jpg" width="250"> <img src="img/ILI9225mandelbrot01.jpg" width="250">
 
 >sample.lua      `-- draw graphics demo`  
 >mandelbrot.lua  `-- draw Mandelbrot set`  
