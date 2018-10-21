@@ -2,7 +2,7 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/10/21 rev.0.28 add pio function
+-- 2018/10/21 rev.0.28 support PIO for D3
 -----------------------------------------------
 --[[
 Pin assign

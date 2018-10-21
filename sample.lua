@@ -2,7 +2,7 @@
 -- Sample of SlibILI9225.lua for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/10/21 rev.0.03
+-- 2018/10/21 rev.0.03 support PIO for D3
 -----------------------------------------------
 
 local script_path = function()
