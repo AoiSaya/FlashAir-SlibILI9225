@@ -1,7 +1,7 @@
 # FlashAir-SlibILI9225
 
 Lua library for TFT display modules with ILI9225 for FlashAir.  
-  
+`Update at 2018/10/22 for PIO at type2 and LED backlight control at type3.`  
 <img src="img/ILI9225connect01.jpg" width="500">
 
 ## Tested equipment
@@ -12,9 +12,9 @@ Tested on this 2.2-inch TFT display module with ILI9225 and FlashAir W-04 v4.00.
 
 ## FlashAir to TFT module connections
 
-Please choose your favorite case.
+Please choose your favorite type.
 
-**Case1**  
+**Type1**  
 Module Reset is hard reset.  
 
 ILI9225 TFT | FlashAir(Pin#) | Power
@@ -29,22 +29,38 @@ LED |---     |3.3V
 VCC |VCC (4) |3.3V   
 GND |VSS(3,6)|GND    
 
-**Case2**  
+**Type2**  
 Module reset is only a soft reset.  
-DAT3 of FlashAir can be used for another purpose.  
+DAT3 of FlashAir can be used for PIO.  
 
-ILI9225 TFT | FlashAir(Pin#) | Power
---- | --- | ---
+ILI9225 TFT | FlashAir(Pin#) | Power | comment
+--- | --- | --- | ---
 --- |CLK (5) |Pull-down(10korm) to GND
 SDI |CMD (2) |
 CLK |DAT0(7) |
 RS  |DAT1(8) |
 CS  |DAT2(9) |
---- |DAT3(1) |
+--- |DAT3(1) | |PIO
 RST |---     |Pull-up(10korm) to 3.3V
 LED |---     |3.3V
 VCC |VCC (4) |3.3V   
 GND |VSS(3,6)|GND    
+
+**Type3**  
+Module reset is only a soft reset.  
+DAT3 of FlashAir for LED backlight on/off control.  
+
+ILI9225 TFT | FlashAir(Pin#) | Power | comment
+--- | --- | --- | ---
+--- |CLK (5) |Pull-down(10korm) to GND
+SDI |CMD (2) |
+CLK |DAT0(7) |
+RS  |DAT1(8) |
+CS  |DAT2(9) |
+LED |DAT3(1) | |connect through 10kohm
+RST |---     |Pull-up(10korm) to 3.3V
+VCC |VCC (4) |3.3V
+GND |VSS(3,6)|GND
 
 ## Install
 
@@ -86,7 +102,7 @@ bgcolor : BBBBB_GGGGGG_RRRRR (64K(16bpp) back ground color)
 
 command | description
 --- | ---
-ILI9225:init(type,rotate,xSize,ySize,offset) | Parameter initialization and reset LCD module.<br>type: 1:D3=RST=H/L, 2:D3=Hi-Z(no hard reset)<br>rotate: 0:Vertical default, 1:Horizontal default, 2:Vertical reverse, 3:Horizontal reverse<br>xSize:LCD x size, ySize:LCD y size, offset:RAM address offset
+ILI9225:init(type,rotate,xSize,ySize,offset) | Parameter initialization and reset LCD module.<br>type: 1:D3=RST, 2:D3=PIO, 3:D3=LED<br>rotate: 0:Vertical default, 1:Horizontal default, 2:Vertical reverse, 3:Horizontal reverse<br>xSize:LCD x size, ySize:LCD y size, offset:RAM address offset
 ILI9225:writeStart() | Enable control. (CS=0)
 ILI9225:writeEnd()   | Disable control. (CS=1)
 ILI9225:cls()        | Clear screen.
@@ -102,7 +118,10 @@ ILI9225:put(x,y,bitmap) | Put 16 or 24bpp bitmap at upper left coordinates with 
 ILI9225:put2(x,y,bitmap)| Put 16bpp flat bitmap faster at upper left coordinates with (x,y).
 ILI9225:locate(x,y,mag,color,bgcolor,font) | Locate cursor, set print area(x,y)-(xSize-1,ySize-1), attributions and font.<br>If you do not want to change any arguments you can substitute nil.
 x,y=ILI9225:print(str) | Print alphabets and return next cursor position.
-x,y=ILI9225:println(str) | Print alphabets, creates a new line and same as above.
+x,y=ILI9225:println(str) | Print alphabets, creates a new line and return next cursor position.
+ret=ILI9225:pio(ctrl,data) | Pio control of DAT3 at type==2. If type==1 then return nil.<br>ctrl is 0:input, 1:output. data is value for output and return input value.
+ILI9225:ledOn() | LED backlight ON at type==3
+ILI9225:ledOff() | LED backlight OFF at type==3
 
 ## Sample program
 
