@@ -2,7 +2,7 @@
 -- Sample of SlibILI9225.lua for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/10/12 rev.0.02
+-- 2018/10/21 rev.0.03
 -----------------------------------------------
 
 local script_path = function()
@@ -59,11 +59,10 @@ local cbar={
 for rot = 0,3 do
 	local mx,my = 176,220
 	if rot==1 or rot==3 then mx,my=my,mx end
-	lcd:init(1,rot,mx, my,0)
-	lcd:writeStart()
 
-	lcd:cls()
+	lcd:init(2,rot,mx, my,0)
 	lcd:dspOn()
+	lcd:ledOn()
 
 ---[[
 -- color bar

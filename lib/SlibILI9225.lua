@@ -2,7 +2,7 @@
 -- SoraMame library of ILI9225@65K for W4.00.03
 -- Copyright (c) 2018, Saya
 -- All rights reserved.
--- 2018/09/11 rev.0.27 change order of put,put2 param
+-- 2018/10/21 rev.0.28 add pio function
 -----------------------------------------------
 --[[
 Pin assign
@@ -11,10 +11,11 @@ CMD	0x01 DO 	L		SDI 	SDI
 D0	0x02 CLK	L		CLK 	CLK
 D1	0x04 CS 	H		RS		RS
 D2	0x08 DI 	I		CS		CS
-D3	0x10 RSV	L		RST 	Hi-Z
+D3	0x10 RSV	L		RST 	PIO
 --]]
 
 local ILI9225 = {
+type  = 1;
 id	  = 0;
 gs	  = 0;
 swp   = false;
@@ -28,6 +29,7 @@ hOfs  = 0;
 vOfs  = 0;
 rOfs  = 0;
 ctrl  = 0x1F;
+piod  = 0x10;
 x	  = 0;
 y	  = 0;
 x0	  = 0;
@@ -63,6 +65,7 @@ function ILI9225:readWord(cmd,num)
 	local i,s,dt,ret
 	local pio = fa.pio
 	local ctrl= self.ctrl
+	local piod= self.piod
 	local bx  = bit32.extract
 	local bb  = bit32.band
 
@@ -70,16 +73,15 @@ function ILI9225:readWord(cmd,num)
 
 	for i=7,0,-1 do
 		dt = bx(cmd,i)
-		pio(ctrl,0x10+dt) -- CS=0,RS=0,CLK=0
-		pio(ctrl,0x12+dt) -- CS=0,RS=0,CLK=1
+		pio(ctrl,piod+0x00+dt) -- CS=0,RS=0,CLK=0
+		pio(ctrl,piod+0x02+dt) -- CS=0,RS=0,CLK=1
 	end
 	ret = 0
 	for i= 0,15 do
-		pio(ctrl-0x01,0x14) -- CS=0,RS=1,CLK=0,
-		s,dt = pio(ctrl-0x01,0x16) -- CS=0,RS=1,CLK=1
+		pio(ctrl-0x01,piod+0x04) -- CS=0,RS=1,CLK=0,
+		s,dt = pio(ctrl-0x01,piod+0x06) -- CS=0,RS=1,CLK=1
 		ret = ret*2+bb(dt,0x01)
 	end
-	pio(ctrl,0x18) -- CS=1,RS=0
 	self:writeWord(0x66,0x0000)
 
 	return ret
@@ -230,12 +232,15 @@ end
 
 function ILI9225:init(type,rotate,xSize,ySize,offset)
 	local id,gs,swp,hDrc,vDrc
+
 	if type==1 then self.ctrl=0x1F end
-	if type==2 then self.ctrl=0x0F end
 	if rotate==0 then id,gs,swp,hDrc,vDrc = 0,0,false,-1, 1 end
 	if rotate==1 then id,gs,swp,hDrc,vDrc = 0,1,true,  1,-1 end
 	if rotate==2 then id,gs,swp,hDrc,vDrc = 3,0,false, 1,-1 end
 	if rotate==3 then id,gs,swp,hDrc,vDrc = 3,1,true, -1, 1 end
+
+	self.type= type
+	self:ledOff()
 
 	self.id	 = id
 	self.gs	 = gs
@@ -256,15 +261,20 @@ function ILI9225:init(type,rotate,xSize,ySize,offset)
 	self.yMax = ySize-1
 	self.rOfs = offset;
 
--- reset sequence
-	fa.pio(self.ctrl,0x10) -- RST=1,CS=0,RS=0
-	sleep(1)
-	fa.pio(self.ctrl,0x00) -- RST=0,CS=0,RS=0
-	sleep(10)
-	fa.pio(self.ctrl,0x18) -- RST=1,CS=1,RS=0
+-- reset sequence:
+	if type==1 then
+		fa.pio(self.ctrl,0x10) -- RST=1,CS=0,RS=0
+		sleep(1)
+		fa.pio(self.ctrl,0x00) -- RST=0,CS=0,RS=0
+		sleep(10)
+		fa.pio(self.ctrl,0x18) -- RST=1,CS=1,RS=0
+	end
 	self:writeWord(0x28,0xCE) -- Software reset
 	sleep(50)
 	self:setup()
+
+	self:writeStart()
+	self:cls()
 end
 
 function ILI9225:writeStart()
@@ -272,7 +282,7 @@ function ILI9225:writeStart()
 		fa.spi("mode",0)
 		fa.spi("init",1)
 		fa.spi("bit",8)
-		fa.pio(self.ctrl,0x18) -- CS=1,RS=0
+		fa.pio(self.ctrl,self.piod+0x04) -- CS=0,RS=1
 		self.enable = true
 	end
 end
@@ -280,7 +290,7 @@ end
 function ILI9225:writeEnd()
 	if self.enable then
 		self:writeWord(0x00,0x0000)
-		fa.pio(self.ctrl,0x18) -- CS=1,RS=0
+		fa.pio(self.ctrl,self.piod+0x0C) -- CS=1,RS=1
 		self.enable = falce
 	end
 end
@@ -643,6 +653,29 @@ function ILI9225:println(str)
 	self.x,self.y = self.x0,self.y+self.mag*self.font.height
 
 	return self.x,self.y
+end
+
+function ILI9225:pio(ctrl, data)
+	local dat,s,ret
+
+	if self.type==2 then
+		self.ctrl = bit32.band(self.ctrl,0x0F)+ctrl*0x10
+		self.piod = data*0x10
+		dat = bit32.band(enable and 0x0C or 0x04)+self.piod
+		s, ret = fa.pio(self.ctrl, dat)
+		ret = bit32.btest(ret,0x10) and 1 or 0
+	end
+
+	return ret
+end
+
+function ILI9225:ledOn()
+	sleep(30)
+	self:pio(1, 1)
+end
+
+function ILI9225:ledOff()
+	self:pio(1, 0)
 end
 
 collectgarbage()
