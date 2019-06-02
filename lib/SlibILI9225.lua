@@ -43,7 +43,7 @@ function ILI9225:writeCmd(cmd)
 	spi("cs",1)
 end
 
-function ILI9225:pinCfg(cs2,cs,dc,ck,dt)
+function ILI9225:pinCfg(cs2,cs,dc,ck,dt) -- 0:low, 1:high, 2:Hi-Z, 4:not change
 	local	pinIo = self.pinIo
 	local	pinDt = self.pinDt
 	local	ba	  = bit32.band
