@@ -1,8 +1,8 @@
 -----------------------------------------------
 -- SoraMame library of ILI9225@65K for W4.00.03
--- Copyright (c) 2018, Saya
+-- Copyright (c) 2018,2019 AoiSaya
 -- All rights reserved.
--- 2018/10/22 rev.0.29 support LED for D3
+-- 2019/06/02 rev.0.30 support Kanji font
 -----------------------------------------------
 --[[
 Pin assign
@@ -14,31 +14,7 @@ D2	0x08 DI 	CS		CS		CS
 D3	0x10 RSV	RST		PIO		LED
 --]]
 
-local ILI9225 = {
-type  = 1;
-id	  = 0;
-gs	  = 0;
-swp   = false;
-xMax  = 176-1;
-yMax  = 220-1;
-hSize = 176;
-vSize = 220;
-hDrc  = 1;
-vDrc  = 1;
-hOfs  = 0;
-vOfs  = 0;
-rOfs  = 0;
-ctrl  = 0x1F;
-piod  = 0x10;
-x	  = 0;
-y	  = 0;
-x0	  = 0;
-fc	  = "\255\255";
-bc	  = "\000\000";
-font  = {};
-mag   = 1;
-enable= false;
-}
+local ILI9225 = {}
 
 --[Low layer functions]--
 
@@ -50,41 +26,76 @@ function ILI9225:writeString(cmd,str,...)
 	spi("write",str,...)
 end
 
-function ILI9225:writeWord(cmd,data)
+function ILI9225:writeWord(cmd,...)
 	local spi = fa.spi
 	spi("cs",0)
 	spi("write",cmd)
 	spi("cs",1)
 	spi("bit",16)
-	spi("write",data)
+	spi("write",...)
 	spi("bit",8)
+end
+
+function ILI9225:writeCmd(cmd)
+	local spi = fa.spi
+	spi("cs",0)
+	spi("write", cmd)
+	spi("cs",1)
+end
+
+function ILI9225:pinCfg(cs2,cs,dc,ck,dt)
+	local	pinIo = self.pinIo
+	local	pinDt = self.pinDt
+	local	ba	  = bit32.band
+	local	data, mask
+	for i,d in ipairs({cs2,cs,dc,ck,dt}) do
+		if d<4 then
+			data =2^(5-i)
+			mask =-data-1
+			pinIo=ba(pinIo,mask)
+			pinDt=ba(pinDt,mask)
+			if d<2	then pinIo=pinIo+data end
+			if d==1 then pinDt=pinDt+data end
+		end
+	end
+
+	self.pinIo = pinIo
+	self.pinDt = pinDt
+
+	return pinIo,pinDt
+end
+
+function ILI9225:pinSet(cs2,cs,rs,ck,dt)
+	local pinIo,pinDt = self:pinCfg(cs2,cs,dc,ck,dt)
+	s,dt = fa.pio(pinIo,pinDt)
+
+	return s,dt
 end
 
 --[[
 function ILI9225:readWord(cmd,num)
-	local i,s,dt,ret
-	local pio = fa.pio
-	local ctrl= self.ctrl
-	local piod= self.piod
+	local i, s, dt, val
 	local bx  = bit32.extract
 	local bb  = bit32.band
 
+	self:writeStart()
 	self:writeWord(0x66,0x0001)
 
 	for i=7,0,-1 do
 		dt = bx(cmd,i)
-		pio(ctrl,piod+0x00+dt) -- CS=0,RS=0,CLK=0
-		pio(ctrl,piod+0x02+dt) -- CS=0,RS=0,CLK=1
+		self.pinSet(4,4,0,0,dt)
+		self.pinSet(4,4,0,1,dt)
 	end
-	ret = 0
+	val = 0
 	for i= 0,15 do
-		pio(ctrl-0x01,piod+0x04) -- CS=0,RS=1,CLK=0,
-		s,dt = pio(ctrl-0x01,piod+0x06) -- CS=0,RS=1,CLK=1
-		ret = ret*2+bb(dt,0x01)
+		self.pinSet(4,4,1,0,2)
+		s,dt = self.pinSet(4,4,1,1,2)
+		val = val*2+bb(dt,0x01)
 	end
+	self.pinSet(4,4,1,0,2)
 	self:writeWord(0x66,0x0000)
 
-	return ret
+	return val
 end
 --]]
 
@@ -98,9 +109,7 @@ function ILI9225:writeRamCmd(h,v)
 	local spi = fa.spi
 	self:writeWord(0x20,h)
 	self:writeWord(0x21,v)
-	spi("cs",0)
-	spi("write",0x22)
-	spi("cs",1)
+	self:writeCmd(0x22)
 end
 
 function ILI9225:writeRamData(str,...)
@@ -230,68 +239,134 @@ end
 -- type: 1:D3=RST=H/L, 2:D3=Hi-Z(no hard reset)
 -- rotate: 0:upper pin1, 1:upper pin5, 2:lower pin1, 3:lower pin11
 
-function ILI9225:init(type,rotate,xSize,ySize,offset)
-	local id,gs,swp,hDrc,vDrc
+function ILI9225:init(type,rotate,xSize,ySize,rOffset,dOffset)
+	local id,gs,swp,hDrc,vDrc,hSize,vSize
 
-	if type==1 then self.ctrl=0x1F end
+	rOffset = rOffset or 0
+	dOffset = dOffset or 0
+
+	self.type = type
+	self.csmd = 0
+	self.pinIo= 0x00
+	self.pinDt= 0x00
+	self:pinCfg(1,1,1,0,0)
+
+	if type==4 or type==21 or type==22 or type==23 then
+		self.csmd = 1
+		self:pinCfg(1,2,1,0,0)
+	end
+	if type==2	then
+		self.csmd = 0
+		self:pinCfg(2,1,1,0,0)
+	end
+
+	self:ledOff()
+
 	if rotate==0 then id,gs,swp,hDrc,vDrc = 0,0,false,-1, 1 end
 	if rotate==1 then id,gs,swp,hDrc,vDrc = 0,1,true,  1,-1 end
 	if rotate==2 then id,gs,swp,hDrc,vDrc = 3,0,false, 1,-1 end
 	if rotate==3 then id,gs,swp,hDrc,vDrc = 3,1,true, -1, 1 end
 
-	self.type= type
-	self:ledOff()
+	hSize = swp and ySize or xSize
+	vSize = swp and xSize or ySize
 
 	self.id	 = id
 	self.gs	 = gs
 	self.swp = swp
-	if swp then
-		self.hSize = ySize
-		self.vSize = xSize
-	else
-		self.hSize = xSize
-		self.vSize = ySize
-	end
+	self.hSize = hSize
+	self.vSize = vSize
 	self.hDrc = hDrc
 	self.vDrc = vDrc
-	self.hOfs = (hDrc>0) and 0 or self.hSize-1
-	self.vOfs = (vDrc>0) and offset or self.vSize+offset-1
+	self.hOfs = (hDrc>0) and rOffset or rOffset+hSize-1
+	self.vOfs = (vDrc>0) and dOffset or dOffset+vSize-1
 	self.mRot = mRot
 	self.xMax = xSize-1
 	self.yMax = ySize-1
-	self.rOfs = offset;
+	self.rOfs = rOffset
+	self.dOfs = dOffset
 
--- reset sequence:
+	self.x	  = 0
+	self.y	  = 0
+	self.x0	  = 0
+	self.y0	  = 0
+	self.xspc = 0
+	self.yspc = 0
+	self.yh   = 0
+	self.fc	  = "\255\255"
+	self.bc	  = "\000\000"
+	self.font = {}
+	self.mag  = 1
+	self.enable= 0
+	self.spiPeriod = 1000
+	self.spiMode   = 0
+	self.spiBit    = 8
+	self.xFlip1= 0
+	self.yFlip1= 0
+	self.xFlip2= 0
+	self.yFlip2= 0
+
+-- reset sequence
 	if type==1 then
-		fa.pio(self.ctrl,0x10) -- RST=1,CS=0,RS=0
+		self:pinSet(1,0,0,0,0)
 		sleep(1)
-		fa.pio(self.ctrl,0x00) -- RST=0,CS=0,RS=0
+		self:pinSet(0,0,0,0,0)
 		sleep(10)
-		fa.pio(self.ctrl,0x18) -- RST=1,CS=1,RS=0
+		self:pinSet(1,0,0,0,0)
+		sleep(5)
+		self:pinSet(1,1,1,0,0)
 	end
+	self:writeStart()
 	self:writeWord(0x28,0xCE) -- Software reset
+	self:writeEnd()
 	sleep(50)
 	self:setup()
 
 	self:writeStart()
 	self:cls()
+	collectgarbage()
+end
+
+function ILI9225:duplicate()
+	local new = {}
+	for k,v in pairs(self) do
+		new[k] = v
+	end
+	collectgarbage()
+
+	return new
 end
 
 function ILI9225:writeStart()
-	if not self.enable then
-		fa.spi("mode",0)
-		fa.spi("init",1)
-		fa.spi("bit",8)
-		fa.pio(self.ctrl,self.piod+0x04) -- CS=0,RS=1
-		self.enable = true
-	end
+	local en = self.enable
+	local type = self.type
+	local cs, cs2
+
+	cs = (en==1 or en==3) and ((self.csmd==1) and 2 or 1) or 4
+	cs2= (en==2 or en==3) and 1 or 4
+	self:pinSet(cs2,cs,4,4,4)
+
+	fa.spi("mode",0)
+	fa.spi("init",1)
+	fa.spi("bit",8)
+	en = (type==22) and 2 or ((type==23) and (enable or 3) or 1)
+	cs = (en==1 or en==3) and 0 or 4
+	cs2= (en==2 or en==3) and 0 or 4
+	self:pinSet(cs2,cs,4,4,4)
+
+	self.enable = en
 end
 
 function ILI9225:writeEnd()
-	if self.enable then
-		self:writeWord(0x00,0x0000)
-		fa.pio(self.ctrl,self.piod+0x0C) -- CS=1,RS=1
-		self.enable = falce
+	local en = self.enable
+	local cs,cs2
+
+	if en>0 then
+		self:writeCmd(0x00) -- NOP
+		cs = (en==1 or en==3) and ((self.csmd==1) and 2 or 1) or 4
+		cs2= (en==2 or en==3) and 1 or 4
+		self:pinSet(cs2,cs,4,4,4)
+
+		self.enable = 0
 	end
 end
 
@@ -310,6 +385,7 @@ function ILI9225:dspOff()
 end
 
 function ILI9225:pset(x,y,color)
+	color = color or self.fc
 	if (x<0 or x>self.xMax) then return end
 	if (y<0 or y>self.yMax) then return end
 	local h,v = self:pTrans(x,y)
@@ -319,6 +395,7 @@ function ILI9225:pset(x,y,color)
 end
 
 function ILI9225:line(x1,y1,x2,y2,color)
+	color = color or self.fc
 	local swap
 	local h1,h2,hn,ha,hb,hd,hv,hr,hs,h
 	local v1,v2,vn,vd,v
@@ -372,6 +449,7 @@ function ILI9225:line(x1,y1,x2,y2,color)
 end
 
 function ILI9225:box(x1,y1,x2,y2,color)
+	color = color or self.fc
 	self:line(x1,y1,x2,y1,color)
 	self:line(x2,y1,x2,y2,color)
 	self:line(x2,y2,x1,y2,color)
@@ -379,6 +457,7 @@ function ILI9225:box(x1,y1,x2,y2,color)
 end
 
 function ILI9225:boxFill(x1,y1,x2,y2,color)
+	color = color or self.fc
 	local xMax = self.xMax
 	local yMax = self.yMax
 	local bx = bit32.extract
@@ -394,7 +473,6 @@ function ILI9225:boxFill(x1,y1,x2,y2,color)
 	if y2>yMax then y2=yMax end
 
 	col = string.char(bx(color,8,8),bx(color,0,8))
-
 	x1 = mf(x1+0.5)
 	x2 = mf(x2+0.5)
 	y1 = mf(y1+0.5)
@@ -424,6 +502,7 @@ function ILI9225:boxFill(x1,y1,x2,y2,color)
 end
 
 function ILI9225:circle(x,y,xr,yr,color)
+	color = color or self.fc
 	local c
 	local x1,y1,x2,y2
 	local sin = math.sin
@@ -444,6 +523,7 @@ function ILI9225:circle(x,y,xr,yr,color)
 end
 
 function ILI9225:circleFill(x,y,xr,yr,color)
+	color = color or self.fc
 	local h1,v1,h2,v2
 	local x1,x2,y1,y2,xs,r2,xn
 	local xMax = self.xMax
@@ -559,7 +639,7 @@ function ILI9225:put2(x,y,bitmap)
 	collectgarbage()
 end
 
-function ILI9225:locate(x,y,mag,color,bgcolor,font)
+function ILI9225:locate(x,y,mag,xspc,yspc)
 	local bx = bit32.extract
 	local mf = math.floor
 
@@ -569,113 +649,186 @@ function ILI9225:locate(x,y,mag,color,bgcolor,font)
 	end
 	if y then
 		self.y	= mf(y+0.5)
+		self.y0 = self.y
 	end
 	if mag then
 		self.mag= mf(mag)
 	end
-	if color then
-		self.fc = string.char(bx(color,8,8),bx(color,0,8))
+	if mag then
+		self.mag= mf(mag)
+	end
+	if xspc then
+		self.xspc= mf(xspc)
+	end
+	if yspc then
+		self.yspc= mf(yspc)
+	end
+end
+
+function ILI9225:color(fgcolor,bgcolor)
+	local bx = bit32.extract
+
+	if fgcolor then
+		self.fc = string.char(bx(fgcolor,8,8),bx(fgcolor,0,8))
 	end
 	if bgcolor then
 		self.bc = string.char(bx(bgcolor,8,8),bx(bgcolor,0,8))
 	end
+end
+
+function ILI9225:setFont(font)
 	if font then
 		self.font = font
 	end
 end
 
 function ILI9225:print(str)
-	local n,c,b,bk,bj,il,is,sn,slen,sp
-	local h1,v1,h2,v2
+	local n,c,bk,bj,is,slen
+	local h1,v1,h2,v2,b,h,w
 	local s = ""
 	local p = {}
-	local fw = self.font.width
-	local fh = self.font.height
+	local font = self.font
+	local fh1,fh2,fh
+	local xs = self.xspc
 	local mg = self.mag
 	local bx = bit32.extract
 	local mf = math.floor
 	local s0 = string.rep(self.bc,mg)
 	local s1 = string.rep(self.fc,mg)
 	local ti = table.insert
+	local rows = 1
+
+	if font.fontList then -- jfont using
+		fh1 = font.font1.height
+		fh2 = font.font2.height
+		fh = (fh1>fh2) and fh1 or fh2
+	else -- ANK only
+		fh = font.height
+	end
+	yh = fh + self.yspc
+	self.yh = yh
 
 	self:setRamMode(0,0,1)
 
-	is = 1
-	slen = #str
-	while slen>0 do
-		sn = mf((self.xMax+1-self.x)/mg/fw)
-		il = sn<slen and sn or slen
-		slen = slen - il
-		h1,v1,h2,v2 = self:bTrans(self.x,self.y,self.xMax,self.y+mg*fh-1)
-		self:setWindow(h1,v1,h2,v2)
-		if self.id==0 then self:writeRamCmd(h1,v2) else	self:writeRamCmd(h2,v1) end
+	h1,v1,h2,v2 = self:bTrans(self.x,self.y,self.xMax,self.y+mg*fh-1)
+	self:setWindow(h1,v1,h2,v2)
+	if self.id==0 then self:writeRamCmd(h1,v2) else	self:writeRamCmd(h2,v1) end
 
-		bk=1
-		for i=is,is+il-1 do
-			c = str.sub(str,i,i)
-			b = self.font[c]
-			for j=1,fw do
-				bj,bk=b[j],bk+fh
-				for k=fh-1,0,-1 do ti(p,bx(bj,k)>0 and s1 or s0) end
-				if bk>800 or mg>1 then
-					s = table.concat(p)
-					for l=1,mg do
-						self:writeRamData(s)
-					end
-					bk=1
-					p={}
-				end
+	bk = 0
+	is = 1
+	n  = 0
+	slen = #str
+	while is<=slen do
+		if font.fontList then -- jfont using
+			b,h,w,is = font:getFont(str, is)
+		else -- ANK only
+			c = str:sub(is,is)
+			b,h,w,is = font[c],font.height,font.width,is+1
+		end
+
+		if self.x+mg*(w+xs)-1>self.xMax then
+			if bk>0 then
+				s = table.concat(p)
+				self:writeRamData(s:rep(mg))
+				bk,p,s=0,{},""
+				collectgarbage()
+			end
+			self.x,self.y = self.x0,self.y+mg*yh
+			if self.y+mg*yh-1>self.yMax then
+				self.y = self.y0
+				break
+			end
+			rows = rows+1
+			h1,v1,h2,v2 = self:bTrans(self.x,self.y,self.xMax,self.y+mg*fh-1)
+			self:setWindow(h1,v1,h2,v2)
+			if self.id==0 then self:writeRamCmd(h1,v2) else	self:writeRamCmd(h2,v1) end
+		end
+		for j=1,w+xs do
+			if j>w then
+				bj,bk=0,bk+h
+			else
+				bj,bk=b[j],bk+h
+			end
+			for k=h-1,0,-1 do ti(p,bx(bj,k)>0 and s1 or s0) end
+			if bk>800 or mg>1 then
+				s = table.concat(p)
+				self:writeRamData(s:rep(mg))
+				bk,p,s=0,{},""
+				collectgarbage()
 			end
 		end
-		if bk>1 and il>0 then
-			s = table.concat(p)
-			for l=1,mg do
-				 self:writeRamData(s)
-			end
-			p={}
-		end
-		self.x = self.x+mg*fw*il
-		if slen>0 or self.x>self.xMax then
-			self.x,self.y = self.x0,self.y+mg*fh
-			is = is+il
-		end
-		s=""
-		collectgarbage()
+		self.x = self.x+mg*(w+xs)
+		n = is-1
 	end
+	if bk>0 then
+		s = table.concat(p)
+		self:writeRamData(s:rep(mg))
+	end
+
+	bk,p,s=0,{},""
+	collectgarbage()
 	self:resetWindow()
 	self:setRamMode(0,0,0)
 
-	return self.x,self.y
+	return self.x,self.y,n,rows
 end
 
 function ILI9225:println(str)
-	self:print(str)
-	self.x,self.y = self.x0,self.y+self.mag*self.font.height
+	local x,y,n,rows = self:print(str)
+	local yh = self.yh
 
-	return self.x,self.y
+	self.x,self.y = self.x0,self.y+self.mag*yh
+	if self.y+self.mag*yh-1>self.yMax then
+		self.y = self.y0
+	end
+
+	return self.x,self.y,n,rows
 end
 
 function ILI9225:pio(ctrl, data)
 	local dat,s,ret
 
 	if self.type>1 then
-		self.ctrl = bit32.band(self.ctrl,0x0F)+ctrl*0x10
-		self.piod = data*0x10
-		dat = bit32.band(enable and 0x0C or 0x04)+self.piod
-		s, ret = fa.pio(self.ctrl, dat)
-		ret = bit32.btest(ret,0x10) and 1 or 0
+		s,ret = self:pinSet((1-ctrl)*2+data,4,4,4,4)
+		if s==1 then
+			ret = bit32.btest(ret,0x10) and 1 or 0
+		end
 	end
 
 	return ret
 end
 
 function ILI9225:ledOn()
-	sleep(30)
-	self:pio(1,1)
+	if self.type==3 then
+		sleep(30)
+		self:pio(1,1)
+	end
 end
 
 function ILI9225:ledOff()
-	self:pio(1,0)
+	if self.type==3 then
+		self:pio(1,0)
+	end
+end
+
+function ILI9225:spiInit(period,mode,bit,cstype)
+	if self.type~=4 then
+		return
+	end
+	self.spiPeriod = period
+	self.spiMode   = mode
+	self.spiBit    = bit
+	self.spiCstype = cstype or 0
+	local cs = (cstype==2) and 2 or 1-cstype
+	self:pinSet(cs,4,4,4,4)
+end
+
+function ILI9225:spiWrite(data,num)
+	return self.spiSub(0,data,num)
+end
+
+function ILI9225:spiRead(data,num)
+	return self.spiSub(1,data,num)
 end
 
 collectgarbage()

@@ -1,9 +1,16 @@
 -----------------------------------------------
 -- Sample of SlibILI9225.lua for W4.00.03
--- Copyright (c) 2018, Saya
+-- Copyright (c) 2018,2019 AoiSaya
 -- All rights reserved.
--- 2018/10/22 rev.0.04 support LED for D3
+-- 2019/06/02 rev.0.05
 -----------------------------------------------
+function chkBreak(n)
+	sleep(n or 0)
+		if fa.sharedmemory("read", 0x00, 0x01, "") == "!" then
+		error("Break!",2)
+	end
+end
+fa.sharedmemory("write", 0x00, 0x01, "-")
 
 local script_path = function()
 	local  str = debug.getinfo(2, "S").source:sub(2)
@@ -60,9 +67,8 @@ for rot = 0,3 do
 	local mx,my = 176,220
 	if rot==1 or rot==3 then mx,my=my,mx end
 
-	lcd:init(3,rot,mx, my,0)
+	lcd:init(1,rot,mx,my)
 	lcd:dspOn()
-	lcd:ledOn()
 
 ---[[
 -- color bar
@@ -80,9 +86,9 @@ for rot = 0,3 do
 		lcd:boxFill(5*mx/7+i*mx/21,my*9/12,5*mx/7+(i+1)*mx/21,my-1,to64K(cbar[i+19]))
 	end
 	lcd:boxFill(6*mx/7,my*9/12,mx-1,my-1,to64K(cbar[22]))
-	lcd:writeEnd()
 
-	sleep(1000)
+	lcd:box(0,0,mx-1,my-1,to64K(0xFFFFFF)) -- for offset check
+	chkBreak(1000)
 	local rnd = math.random
 	lcd:cls()
 	collectgarbage()
@@ -128,9 +134,10 @@ end
 --locate and print demo
 	n = 0x20
 	for i=0,21,7 do
-		lcd:locate(0,i,1,nil,0x0000,font74)
+		lcd:setFont(font74)
+		lcd:locate(0,i,1)
 		for j=0, mx-1, 4 do
-			lcd:locate(nil,nil,nil,to64K(cbar[(i/7+j)%7+1]))
+			lcd:color(to64K(cbar[(i/7+j)%7+1]))
 			lcd:print(string.char(n))
 			n = n>=0x7E and 0x20 or n+1
 		end
@@ -139,7 +146,8 @@ end
 --locate and println demo
 	lcd:locate(0,28)
 	for i=1,6 do
-		lcd:locate(nil,nil,i,to64K(cbar[i]))
+		lcd:locate(nil,nil,i)
+		lcd:color(to64K(cbar[i]))
 		lcd:println(string.sub("01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqr",1,mx/4/i-0.1))
 	end
 
@@ -149,7 +157,7 @@ end
 	lcd:put(0,0,balloonBmp)
 	lcd:put2(64,64,balloonImg)
 
-	sleep(1000)
+	chkBreak(1000)
 	balloonBmp=nil
 	balloonImg=nil
 	collectgarbage()
