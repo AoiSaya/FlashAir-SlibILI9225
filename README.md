@@ -2,11 +2,11 @@
 
 Lua library for TFT display modules with ILI9225 for FlashAir.  
 <img src="img/ILI9225connect01.jpg" width="500">  
-`Update at 2019/06/02  
- TYPE2 PIO support.  
- TYPE4 SPI support.  
- init() and locate() comand format change.  
- Japanese font and inter-character space and line interval support.`  
+`Update at 2019/06/02`  
+`TYPE2 PIO support.`  
+`TYPE4 SPI support.`  
+`init() and locate() comand format change.`  
+`Japanese font and inter-character space and line interval support.`  
 
 ## Tested equipment
 
@@ -25,7 +25,7 @@ this text | module pin
 CLK| CLK or SCK or SCL
 SDI| SDI or SDA
 DC | RS  or A0  or DC
-CS or CS2| CS
+CS | CS
 RESET|RST or RESET or RES
 LED| LED or LEDA  or BLK
 GND| GND 
@@ -45,8 +45,8 @@ DAT3 |RESET|PIO |LED |-- /CS
 ### TYPE1  
 Module Reset is hardware reset.  
 
-FlashAir(Pin#) |ILI9225 TFT | Power | comment
----     |--- |---
+FlashAir(Pin#) |ILI9225 TFT | Power | comment  
+---     |--- |--- | ---
 CLK (5) |--- |Pull-down(10korm) to GND
 CMD (2) |SDI |
 DAT0(7) |CLK |
@@ -61,7 +61,7 @@ VSS(3,6)|GND |GND
 DAT3 of FlashAir can be used for PIO.  
 
 FlashAir(Pin#) |ILI9225 TFT| Power | comment
- ---    |--- | --- | ---
+ ---    |--- |--- | ---
 CLK (5) |--- |Pull-down(10korm) to GND
 CMD (2) |SDI |
 DAT0(7) |CLK |
@@ -92,7 +92,7 @@ VSS(3,6)|GND |GND
 CMD,DAT0,DAT2,DAT3 can be used for SPI.
 
 FlashAir(Pin#) |ILI9225 TFT | Power | comment
---- | --- | --- | --- | ---
+--- | --- | --- | --- 
 CLK (5) |--- |---| Pull-down(10korm) to GND
 CMD (2) |SDI |DO |
 DAT0(7) |CLK |CLK|
@@ -144,7 +144,7 @@ bgcolor : BBBBB_GGGGGG_RRRRR (64K(16bpp) back ground color)
 
 command | description
 --- | ---
-ILI9225:init(type,rotate,xSize,ySize,rOffset,dOffset) | Parameter initialization and reset LCD module.<br>**type:** 1:D3=RST,  2:D3=PIO, 3:D3=LED, 4:with SPI, 21:primaly, 22:secondaly, 23:twin <br> See module connections information.<br>**rotate:** 0:Vertical default, 1:Horizontal default, 2:Vertical reverse, 3:Horizontal reverse<br>**xSize,ySize:** LCD x size, y size<br>**rOffset,dOffset:** RAM address offset,default is 0,0
+ILI9225:init(type,rotate,xSize,ySize,rOffset,dOffset) | Parameter initialization and reset LCD module.<br>**type:** 1:D3=RST,  2:D3=PIO, 3:D3=LED, 4:with SPI <br> See module connections information.<br>**rotate:** 0:Vertical default, 1:Horizontal default, 2:Vertical reverse, 3:Horizontal reverse<br>**xSize,ySize:** LCD x size, y size<br>**rOffset,dOffset:** RAM address offset,default is 0,0
 ILI9225:writeStart() | Enable control. (CS=0)
 ILI9225:writeEnd()   | Disable control. (CS=1)
 ILI9225:cls()        | Clear screen.
@@ -188,7 +188,7 @@ These files copy to somewhere in FlashAir.
 If you want to run "sample_kanji.lua", please prepare the following.  
 
 ### 日本語フォントを使う方法
-<img src="img/ILI9341sample01.jpg" width="300">
+<img src="img/ILI9225sample02.jpg" width="250">
 
 日本語フォントを使う場合は、下記のレポジトリをご参照ください。  
 https://github.com/AoiSaya/FlashAir_SlibJfont  
